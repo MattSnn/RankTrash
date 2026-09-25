@@ -99,31 +99,51 @@ export function parseGeminiResponse(body: unknown): AiResult {
 
 /** Modelos reserva, usados quando o principal está sobrecarregado ou indisponível. */
 export const FALLBACK_GEMINI_MODELS = ['gemini-2.5-flash-lite', 'gemini-2.0-flash']
-const RETRYABLE = new Set([429, 500, 502, 503, 504])
+const RETRYABLE = new Set([408, 429, 500, 502, 503, 504])
+/** Tempo máximo de cada chamada ao Gemini. */
+export const GEMINI_ATTEMPT_TIMEOUT_MS = 20_000
+/** Tempo total para classificar (a Edge Function e o app não podem ficar esperando indefinidamente). */
+export const GEMINI_TOTAL_BUDGET_MS = 50_000
+
+class FatalGeminiError extends Error {}
 
 export async function classifyImage(
   apiKey: string,
   imageBase64: string,
   mimeType: string,
   model = DEFAULT_GEMINI_MODEL,
+  budgetMs = GEMINI_TOTAL_BUDGET_MS,
 ): Promise<AiResult> {
   const body = JSON.stringify(buildGeminiRequest(imageBase64, mimeType))
-  const models = [model, ...FALLBACK_GEMINI_MODELS.filter((m) => m !== model)]
-  let lastError = new Error('Gemini indisponível')
-  for (const m of models) {
-    for (let attempt = 0; attempt < 2; attempt++) {
+  // principal, principal de novo, e depois os reservas (uma tentativa cada)
+  const attempts = [model, model, ...FALLBACK_GEMINI_MODELS.filter((m) => m !== model)]
+  const deadline = Date.now() + budgetMs
+  const skip = new Set<string>()
+  let lastError: Error = new Error('Gemini indisponível')
+  for (const [i, m] of attempts.entries()) {
+    if (skip.has(m)) continue
+    const remaining = deadline - Date.now()
+    if (remaining < 3000) break
+    try {
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'x-goog-api-key': apiKey },
         body,
+        // deixa tempo para os modelos reserva se este travar
+        signal: AbortSignal.timeout(Math.min(GEMINI_ATTEMPT_TIMEOUT_MS, Math.round(remaining * 0.6))),
       })
       if (res.ok) return parseGeminiResponse(await res.json())
-      lastError = new Error(`Gemini ${m} ${res.status}: ${(await res.text()).slice(0, 300)}`)
-      console.warn(lastError.message)
-      if (res.status === 404) break // modelo não existe: tenta o próximo
-      if (!RETRYABLE.has(res.status)) throw lastError // chave inválida, requisição errada etc.
-      await new Promise((r) => setTimeout(r, 700 * (attempt + 1)))
+      const err = new Error(`Gemini ${m} ${res.status}: ${(await res.text()).slice(0, 300)}`)
+      if (res.status === 404) skip.add(m) // modelo não existe: pula
+      else if (!RETRYABLE.has(res.status)) throw new FatalGeminiError(err.message) // chave inválida etc.
+      lastError = err
+    } catch (e) {
+      if (e instanceof FatalGeminiError) throw e
+      lastError = new Error(`Gemini ${m} falhou: ${(e as Error).name} ${(e as Error).message}`)
+      skip.add(m) // travou ou caiu: não insiste no mesmo modelo
     }
+    console.warn(lastError.message)
+    if (i === 0) await new Promise((r) => setTimeout(r, 800))
   }
   throw lastError
 }

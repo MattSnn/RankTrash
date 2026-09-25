@@ -127,6 +127,7 @@ export interface Api {
   // admin
   saveBin(bin: Omit<Bin, 'id'> & { id?: string }): Promise<Bin>
   listAllBins(): Promise<Bin[]>
+  deleteBin(id: string): Promise<void>
   pendingDisposals(): Promise<Disposal[]>
   userSeasonDisposals(userId: string): Promise<Disposal[]>
   reviewDisposal(id: string, approve: boolean): Promise<void>

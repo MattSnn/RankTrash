@@ -339,6 +339,10 @@ export function createMockApi(): Api {
     async listAllBins() {
       return [...bins]
     },
+    async deleteBin(bid) {
+      const i = bins.findIndex((b) => b.id === bid)
+      if (i >= 0) bins.splice(i, 1)
+    },
     async pendingDisposals() {
       return pending.filter((p) => p.status === 'pending')
     },

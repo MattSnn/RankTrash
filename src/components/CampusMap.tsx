@@ -49,9 +49,23 @@ interface CampusMapProps {
   onMapClick?: (lat: number, lng: number) => void
   renderPopup?: (bin: Bin) => ReactNode
   onBinClick?: (bin: Bin) => void
+  /** lixeira que pode ser arrastada no mapa (edição do admin) */
+  draggableId?: string | null
+  onBinDrag?: (lat: number, lng: number) => void
 }
 
-export function CampusMap({ bins, visited, selectedId, me, flyTo, onMapClick, renderPopup, onBinClick }: CampusMapProps) {
+export function CampusMap({
+  bins,
+  visited,
+  selectedId,
+  me,
+  flyTo,
+  onMapClick,
+  renderPopup,
+  onBinClick,
+  draggableId,
+  onBinDrag,
+}: CampusMapProps) {
   const center = useMemo<[number, number]>(() => [FACENS_CENTER.lat, FACENS_CENTER.lng], [])
   return (
     <MapContainer
@@ -72,7 +86,14 @@ export function CampusMap({ bins, visited, selectedId, me, flyTo, onMapClick, re
             key={bin.id}
             position={[bin.lat, bin.lng]}
             icon={ICON_CACHE[variant]}
-            eventHandlers={onBinClick ? { click: () => onBinClick(bin) } : undefined}
+            draggable={bin.id === draggableId}
+            eventHandlers={{
+              click: () => onBinClick?.(bin),
+              dragend: (e) => {
+                const p = (e.target as L.Marker).getLatLng()
+                onBinDrag?.(p.lat, p.lng)
+              },
+            }}
           >
             {renderPopup && <Popup autoPanPaddingTopLeft={[16, 170]}>{renderPopup(bin)}</Popup>}
           </Marker>

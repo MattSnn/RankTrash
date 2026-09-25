@@ -41,6 +41,25 @@ function BinsTab() {
     )
   }
 
+  async function remove() {
+    if (!draft?.id) return
+    if (!confirm(`Excluir a lixeira "${draft.name}"? Os descartes já feitos nela continuam no histórico.`)) return
+    try {
+      await api.deleteBin(draft.id)
+      setDraft(null)
+      setMsg('Lixeira excluída.')
+      load()
+    } catch (e) {
+      setMsg((e as Error).message)
+    }
+  }
+
+  function edit(b: Bin) {
+    setDraft({ ...b })
+    setFlyTo({ lat: b.lat, lng: b.lng, key: Date.now() })
+    setMsg('Arraste o pino (ou toque no mapa) para mudar o lugar.')
+  }
+
   async function save() {
     if (!draft || !draft.name.trim()) return setMsg('Dê um nome para a lixeira.')
     try {
@@ -60,14 +79,24 @@ function BinsTab() {
 
   return (
     <>
-      <p className="muted">Toque no mapa para posicionar uma lixeira nova ou toque numa lixeira para editar.</p>
+      <p className="muted">
+        Toque no mapa para criar uma lixeira. Toque numa lixeira (ou em EDITAR na lista) para editar, mover ou excluir.
+      </p>
       <div className="admin-map map-wrap" style={{ position: 'relative', inset: 'auto' }}>
         <CampusMap
-          bins={draft && !draft.id ? [...bins, { ...draft, id: '__draft' } as Bin] : bins}
+          bins={
+            draft
+              ? draft.id
+                ? bins.map((b) => (b.id === draft.id ? ({ ...b, ...draft } as Bin) : b))
+                : [...bins, { ...draft, id: '__draft' } as Bin]
+              : bins
+          }
           selectedId={draft?.id ?? (draft ? '__draft' : null)}
+          draggableId={draft ? (draft.id ?? '__draft') : null}
+          onBinDrag={(lat, lng) => setDraft((d) => (d ? { ...d, lat, lng } : d))}
           flyTo={flyTo}
           onMapClick={(lat, lng) => setDraft((d) => (d ? { ...d, lat, lng } : emptyDraft(lat, lng)))}
-          onBinClick={(b) => b.id !== '__draft' && setDraft({ ...b })}
+          onBinClick={(b) => b.id !== '__draft' && b.id !== draft?.id && edit(b)}
         />
       </div>
       <div className="row" style={{ marginBottom: 12 }}>
@@ -113,12 +142,17 @@ function BinsTab() {
             Ativa
           </label>
           <p className="muted" style={{ fontSize: 15 }}>
-            {draft.lat.toFixed(6)}, {draft.lng.toFixed(6)}
+            Local: {draft.lat.toFixed(6)}, {draft.lng.toFixed(6)} (arraste o pino destacado ou use sua localização)
           </p>
           <div className="row">
             <button className="btn btn--ghost btn--sm" onClick={() => setDraft(null)}>
               CANCELAR
             </button>
+            {draft.id && (
+              <button className="btn btn--red btn--sm" onClick={() => void remove()}>
+                EXCLUIR
+              </button>
+            )}
             <span className="spacer" />
             <button className="btn btn--green btn--sm" onClick={save}>
               SALVAR
@@ -134,7 +168,12 @@ function BinsTab() {
               <br />
               <small className="muted">raio {b.radius_m} m</small>
             </span>
-            <span className={`tag ${b.active ? 'tag--approved' : 'tag--rejected'}`}>{b.active ? 'ATIVA' : 'INATIVA'}</span>
+            <span className="row" style={{ gap: 6 }}>
+              <span className={`tag ${b.active ? 'tag--approved' : 'tag--rejected'}`}>{b.active ? 'ATIVA' : 'INATIVA'}</span>
+              <button className="btn btn--sm" onClick={() => edit(b)}>
+                EDITAR
+              </button>
+            </span>
           </li>
         ))}
       </ul>

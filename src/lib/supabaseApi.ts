@@ -85,7 +85,15 @@ export function createSupabaseApi(url: string, anonKey: string): Api {
       form.append('accuracy', String(input.accuracy))
       if (input.binId) form.append('bin_id', input.binId)
       form.append('source', input.source ?? 'camera')
-      const { data, error } = await sb.functions.invoke('register-disposal', { body: form })
+      // limite no app: nunca fica "analisando" para sempre
+      const TIMEOUT_MS = 75_000
+      const timeout = new Promise<'timeout'>((r) => setTimeout(() => r('timeout'), TIMEOUT_MS))
+      const call = sb.functions.invoke('register-disposal', { body: form })
+      const raced = await Promise.race([call, timeout])
+      if (raced === 'timeout') {
+        return { status: 'error', code: 'timeout', message: 'A análise demorou demais. Verifique a internet e tente de novo.' }
+      }
+      const { data, error } = raced
       if (error) {
         // Erros 4xx da função trazem o JSON com a mensagem amigável
         const ctx = (error as { context?: Response }).context
@@ -117,6 +125,10 @@ export function createSupabaseApi(url: string, anonKey: string): Api {
         return check(await sb.from('bins').update(rest).eq('id', id).select('*').single()) as Bin
       }
       return check(await sb.from('bins').insert({ ...bin, created_by: await uid() }).select('*').single()) as Bin
+    },
+    async deleteBin(id) {
+      // descartes antigos continuam no histórico (bin_id vira null)
+      check(await sb.from('bins').delete().eq('id', id))
     },
     async listAllBins() {
       return check(await sb.from('bins').select('*').order('name')) as Bin[]

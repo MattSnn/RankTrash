@@ -157,3 +157,30 @@ describe('classifyImage (retry e modelo reserva)', () => {
     }
   })
 })
+
+describe('classifyImage (tempo limite)', () => {
+  it('desiste de uma chamada travada e usa o reserva, dentro do orçamento', async () => {
+    const { classifyImage } = await import('../supabase/functions/_shared/gemini.ts')
+    const ok = { candidates: [{ content: { parts: [{ text: JSON.stringify({ is_trash: true, item_label: 'Copo', material: 'papel', confidence: 0.9 }) }] } }] }
+    const realFetch = globalThis.fetch
+    const calls: string[] = []
+    globalThis.fetch = ((url: string, init: RequestInit) => {
+      const m = url.split('/models/')[1].split(':')[0]
+      calls.push(m)
+      if (m === 'gemini-2.5-flash') {
+        // nunca responde: só termina quando o AbortSignal dispara
+        return new Promise((_, reject) => init.signal!.addEventListener('abort', () => reject(new DOMException('timeout', 'TimeoutError'))))
+      }
+      return Promise.resolve(new Response(JSON.stringify(ok), { status: 200 }))
+    }) as typeof fetch
+    try {
+      const started = Date.now()
+      const r = await classifyImage('k', 'b64', 'image/jpeg', 'gemini-2.5-flash', 12000)
+      expect(r.item_label).toBe('Copo')
+      expect(calls[calls.length - 1]).toBe('gemini-2.5-flash-lite')
+      expect(Date.now() - started).toBeLessThan(12500)
+    } finally {
+      globalThis.fetch = realFetch
+    }
+  }, 20000)
+})
