@@ -45,7 +45,9 @@ function NameEditor({ current, fullName, onDone }: { current: string; fullName?:
           ))}
         </div>
       )}
-      <input className="input" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} aria-label="Nome" />
+      {suggestions.length === 0 && (
+        <input className="input" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} aria-label="Nome" />
+      )}
       {error && <p className="error-text">{error}</p>}
       <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
         <button className="btn btn--green" style={{ flex: 1 }} disabled={busy} onClick={() => void save()}>

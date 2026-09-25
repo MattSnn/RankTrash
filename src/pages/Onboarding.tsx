@@ -8,9 +8,10 @@ import { useSession } from '../lib/session'
 export function Onboarding() {
   const { profile, refreshProfile } = useSession()
   const suggestions = nameSuggestions(profile?.full_name)
-  const [name, setName] = useState(profile?.display_name ?? suggestions[0] ?? '')
-  // "OUTRO": digitar livre. Sem nome da Microsoft, já começa no campo livre.
-  const [custom, setCustom] = useState(suggestions.length === 0 || !suggestions.includes(name))
+  const current = profile?.display_name ?? ''
+  const [name, setName] = useState(suggestions.length === 0 || suggestions.includes(current) ? current : suggestions[0])
+  // Nome real: só as combinações do nome da conta Microsoft. Campo livre só se a conta não trouxer nome.
+  const custom = suggestions.length === 0
   const [course, setCourse] = useState(profile?.course ?? '')
   const [consent, setConsent] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -46,18 +47,12 @@ export function Onboarding() {
                         <button
                           type="button"
                           key={s}
-                          className={`chip ${!custom && s === name ? 'active' : ''}`}
-                          onClick={() => {
-                            setName(s)
-                            setCustom(false)
-                          }}
+                          className={`chip ${s === name ? 'active' : ''}`}
+                          onClick={() => setName(s)}
                         >
                           {s}
                         </button>
                       ))}
-                      <button type="button" className={`chip ${custom ? 'active' : ''}`} onClick={() => setCustom(true)}>
-                        OUTRO
-                      </button>
                     </div>
                   )}
                   {custom && (
@@ -68,10 +63,11 @@ export function Onboarding() {
                       placeholder="Seu nome no ranking"
                       onChange={(e) => setName(e.target.value)}
                       required
-                      autoFocus={suggestions.length > 0}
                     />
                   )}
-                  <small className="muted">É assim que você aparece no ranking. Dá para mudar depois no Perfil.</small>
+                  <small className="muted">
+                    Escolha como seu nome aparece no ranking (sempre o nome real). Dá para trocar depois no Perfil.
+                  </small>
                 </div>
                 <label className="field">
                   <span>CURSO</span>
