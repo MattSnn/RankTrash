@@ -13,7 +13,14 @@ export const allowedDomains: string[] = ((import.meta.env.VITE_ALLOWED_EMAIL_DOM
   .map((d) => d.trim().toLowerCase())
   .filter(Boolean)
 
+/** E-mails liberados individualmente (ex.: testes com e-mail pessoal). */
+const allowedEmails: string[] = ((import.meta.env.VITE_ALLOWED_EMAILS as string | undefined) ?? '')
+  .split(',')
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean)
+
 export function isAllowedEmail(email: string): boolean {
-  const domain = email.trim().toLowerCase().split('@')[1] ?? ''
-  return allowedDomains.length === 0 || allowedDomains.includes(domain)
+  const normalized = email.trim().toLowerCase()
+  const domain = normalized.split('@')[1] ?? ''
+  return allowedDomains.length === 0 || allowedDomains.includes(domain) || allowedEmails.includes(normalized)
 }

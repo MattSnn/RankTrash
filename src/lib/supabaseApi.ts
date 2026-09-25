@@ -42,7 +42,9 @@ export function createSupabaseApi(url: string, anonKey: string): Api {
       return () => data.subscription.unsubscribe()
     },
     async sendLoginCode(email) {
-      check(await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: true } }))
+      check(
+        await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: true, emailRedirectTo: window.location.origin } }),
+      )
     },
     async verifyLoginCode(email, code) {
       check(await sb.auth.verifyOtp({ email, token: code, type: 'email' }))

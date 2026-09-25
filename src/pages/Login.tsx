@@ -79,7 +79,10 @@ export function Login() {
                 </form>
               ) : (
                 <form onSubmit={verify}>
-                  <p className="muted">Enviamos um código para {email}.{api.demo && ' (demo: qualquer código)'}</p>
+                  <p className="muted">
+                    Enviamos um e-mail para {email}. Digite o código ou toque no link do e-mail.
+                    {api.demo && ' (demo: qualquer código)'}
+                  </p>
                   <label className="field">
                     <span>CÓDIGO</span>
                     <input
