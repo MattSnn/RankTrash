@@ -12,7 +12,7 @@ import { MATERIAL_INFO, MATERIALS } from '../../supabase/functions/_shared/mater
 import { computePoints, nextStreak } from '../../supabase/functions/_shared/scoring.ts'
 import { FACENS_CENTER } from './campus'
 import { dhashOfBlob } from './image'
-import type { AiResult, Api, Bin, Disposal, LeaderRow, Profile, Season } from './types'
+import type { AdminUser, AiResult, Api, Bin, Disposal, LeaderRow, Profile, Season } from './types'
 
 const ME = 'demo-user'
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -70,6 +70,35 @@ const others: { user_id: string; display_name: string; course: string; points: n
   { user_id: 'u7', display_name: 'Mari', course: 'Engenharia Química', points: 150, week: 52 },
   { user_id: 'u8', display_name: 'Theo', course: 'Engenharia Elétrica', points: 96, week: 20 },
   { user_id: 'u9', display_name: 'Gabi', course: 'Engenharia da Computação', points: 61, week: 12 },
+]
+
+const mockUsers: AdminUser[] = [
+  ...others.map((o, i) => ({
+    id: o.user_id,
+    email: `${230100 + i}@facens.br`,
+    display_name: o.display_name,
+    course: o.course,
+    role: 'student' as const,
+    created_at: new Date(Date.now() - (i + 3) * 86400000).toISOString(),
+    last_sign_in_at: new Date(Date.now() - i * 3600000).toISOString(),
+    banned_at: null,
+    ban_reason: null,
+    disposals: Math.round(o.points / 11),
+    season_points: o.points,
+  })),
+  {
+    id: null,
+    email: 'trapaceiro@facens.br',
+    display_name: '',
+    course: '',
+    role: 'student',
+    created_at: new Date(Date.now() - 10 * 86400000).toISOString(),
+    last_sign_in_at: null,
+    banned_at: new Date(Date.now() - 10 * 86400000).toISOString(),
+    ban_reason: 'Fotos da internet',
+    disposals: 0,
+    season_points: 0,
+  },
 ]
 
 const mkAi = (item_label: string, material: AiResult['material'], extra: Partial<AiResult> = {}): AiResult => ({
@@ -383,6 +412,29 @@ export function createMockApi(): Api {
       const top = (await api.leaderboard('season')).slice(0, 3)
       season.closed = true
       return top
+    },
+    async adminListUsers(search) {
+      await delay(200)
+      const q = search.toLowerCase()
+      return mockUsers.filter((u) => u.email.includes(q) || u.display_name.toLowerCase().includes(q))
+    },
+    async adminUserAction(input) {
+      await delay(300)
+      const u = mockUsers.find((x) => (input.user_id ? x.id === input.user_id : x.email === (input as { email?: string }).email))
+      if (!u) throw new Error('Usuário não encontrado')
+      if (input.action === 'delete_disposals') Object.assign(u, { disposals: 0, season_points: 0 })
+      if (input.action === 'ban') {
+        Object.assign(u, { banned_at: new Date().toISOString(), ban_reason: input.reason || null })
+        if (input.delete_disposals) Object.assign(u, { disposals: 0, season_points: 0 })
+      }
+      if (input.action === 'unban') {
+        if (!u.id) mockUsers.splice(mockUsers.indexOf(u), 1)
+        else Object.assign(u, { banned_at: null, ban_reason: null })
+      }
+      if (input.action === 'delete_account') {
+        if (input.ban) Object.assign(u, { id: null, display_name: '', course: '', disposals: 0, season_points: 0, banned_at: new Date().toISOString(), ban_reason: input.reason || null })
+        else mockUsers.splice(mockUsers.indexOf(u), 1)
+      }
     },
   }
   return api

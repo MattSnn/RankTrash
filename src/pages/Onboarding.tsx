@@ -2,11 +2,15 @@ import { useState, type FormEvent } from 'react'
 import { Mascot } from '../components/Mascot'
 import { api } from '../lib/api'
 import { COURSES } from '../lib/campus'
+import { nameSuggestions } from '../lib/names'
 import { useSession } from '../lib/session'
 
 export function Onboarding() {
   const { profile, refreshProfile } = useSession()
-  const [name, setName] = useState(profile?.display_name ?? '')
+  const suggestions = nameSuggestions(profile?.full_name)
+  const [name, setName] = useState(profile?.display_name ?? suggestions[0] ?? '')
+  // "OUTRO": digitar livre. Sem nome da Microsoft, já começa no campo livre.
+  const [custom, setCustom] = useState(suggestions.length === 0 || !suggestions.includes(name))
   const [course, setCourse] = useState(profile?.course ?? '')
   const [consent, setConsent] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -34,10 +38,41 @@ export function Onboarding() {
               <Mascot size={90} mood="happy" />
               <h1>CRIE SEU JOGADOR</h1>
               <form onSubmit={submit}>
-                <label className="field">
-                  <span>NOME NO RANKING</span>
-                  <input className="input" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} required />
-                </label>
+                <div className="field">
+                  <span>COMO QUER SER CHAMADO?</span>
+                  {suggestions.length > 0 && (
+                    <div className="chips" style={{ margin: '6px 0 8px' }}>
+                      {suggestions.map((s) => (
+                        <button
+                          type="button"
+                          key={s}
+                          className={`chip ${!custom && s === name ? 'active' : ''}`}
+                          onClick={() => {
+                            setName(s)
+                            setCustom(false)
+                          }}
+                        >
+                          {s}
+                        </button>
+                      ))}
+                      <button type="button" className={`chip ${custom ? 'active' : ''}`} onClick={() => setCustom(true)}>
+                        OUTRO
+                      </button>
+                    </div>
+                  )}
+                  {custom && (
+                    <input
+                      className="input"
+                      value={name}
+                      maxLength={40}
+                      placeholder="Seu nome no ranking"
+                      onChange={(e) => setName(e.target.value)}
+                      required
+                      autoFocus={suggestions.length > 0}
+                    />
+                  )}
+                  <small className="muted">É assim que você aparece no ranking. Dá para mudar depois no Perfil.</small>
+                </div>
                 <label className="field">
                   <span>CURSO</span>
                   <select className="input" value={course} onChange={(e) => setCourse(e.target.value)} required>
@@ -57,7 +92,7 @@ export function Onboarding() {
                     aparecem no ranking.
                   </span>
                 </label>
-                <button className="btn btn--green btn--block" disabled={busy || !consent}>
+                <button className="btn btn--green btn--block" disabled={busy || !consent || !name.trim()}>
                   {busy ? 'SALVANDO...' : 'COMEÇAR A JOGAR'}
                 </button>
                 {error && <p className="error-text">{error}</p>}

@@ -3,9 +3,9 @@ import { MATERIAL_INFO, MATERIALS } from '../../supabase/functions/_shared/mater
 import { CampusMap } from '../components/CampusMap'
 import { Icon } from '../components/PixelArt'
 import { api } from '../lib/api'
-import type { Bin, Disposal, LeaderRow, Material, Season } from '../lib/types'
+import type { AdminUser, AdminUserAction, Bin, Disposal, LeaderRow, Material, Season } from '../lib/types'
 
-type Tab = 'bins' | 'review' | 'season'
+type Tab = 'bins' | 'review' | 'season' | 'users'
 
 type BinDraft = Omit<Bin, 'id'> & { id?: string }
 
@@ -331,6 +331,177 @@ function SeasonTab() {
   )
 }
 
+const fmtDate = (iso: string | null) =>
+  iso ? new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : 'nunca'
+
+type Pending = { kind: 'ban' | 'delete'; user: AdminUser } | null
+
+function UsersTab() {
+  const [search, setSearch] = useState('')
+  const [users, setUsers] = useState<AdminUser[] | null>(null)
+  const [pending, setPending] = useState<Pending>(null)
+  const [reason, setReason] = useState('')
+  const [alsoWipe, setAlsoWipe] = useState(true)
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState<string | null>(null)
+
+  const load = useCallback(() => {
+    api
+      .adminListUsers(search.trim())
+      .then(setUsers)
+      .catch((e: Error) => setMsg(e.message))
+  }, [search])
+  useEffect(() => {
+    const t = setTimeout(load, 250) // espera parar de digitar
+    return () => clearTimeout(t)
+  }, [load])
+
+  async function run(input: AdminUserAction, done: string) {
+    setBusy(true)
+    setMsg(null)
+    try {
+      await api.adminUserAction(input)
+      setMsg(done)
+      setPending(null)
+      setReason('')
+      load()
+    } catch (e) {
+      setMsg((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function wipe(u: AdminUser) {
+    if (!u.id) return
+    if (!window.confirm(`Apagar TODOS os registros e fotos de ${u.display_name || u.email}? Os pontos zeram. Não dá para desfazer.`)) return
+    void run({ action: 'delete_disposals', user_id: u.id }, 'Registros apagados.')
+  }
+
+  function open(kind: 'ban' | 'delete', user: AdminUser) {
+    setPending({ kind, user })
+    setReason('')
+    setAlsoWipe(kind === 'ban')
+  }
+
+  const active = users?.filter((u) => u.id && !u.banned_at) ?? []
+  const banned = users?.filter((u) => u.banned_at) ?? []
+
+  const card = (u: AdminUser) => (
+    <div key={u.id ?? u.email} className="card user-card">
+      <div className="user-card__head">
+        <div style={{ minWidth: 0 }}>
+          <b>{u.display_name || '(conta apagada)'}</b>
+          <div className="muted user-card__email">{u.email}</div>
+        </div>
+        {u.role === 'admin' && <span className="tag tag--approved">ADMIN</span>}
+        {u.banned_at && <span className="tag tag--rejected">BANIDO</span>}
+      </div>
+      {u.id && (
+        <div className="muted">
+          {u.course || 'sem curso'} · {u.season_points} pts no mês · {u.disposals} registros · último acesso{' '}
+          {fmtDate(u.last_sign_in_at)}
+        </div>
+      )}
+      {u.banned_at && (
+        <div className="muted">
+          Banido em {fmtDate(u.banned_at)}
+          {u.ban_reason ? `: ${u.ban_reason}` : ''}
+        </div>
+      )}
+
+      {pending?.user === u ? (
+        <div className="user-card__confirm">
+          <input
+            className="input"
+            placeholder="Motivo (opcional, o usuário vê)"
+            value={reason}
+            maxLength={200}
+            onChange={(e) => setReason(e.target.value)}
+          />
+          <label className="check">
+            <input type="checkbox" checked={alsoWipe} onChange={(e) => setAlsoWipe(e.target.checked)} />
+            <span>{pending.kind === 'ban' ? 'Apagar os registros também' : 'Banir o e-mail (não volta nunca mais)'}</span>
+          </label>
+          <div className="user-card__actions">
+            <button
+              className="btn btn--red btn--sm"
+              disabled={busy}
+              onClick={() =>
+                u.id &&
+                void (pending.kind === 'ban'
+                  ? run({ action: 'ban', user_id: u.id, reason, delete_disposals: alsoWipe }, 'Usuário banido.')
+                  : run({ action: 'delete_account', user_id: u.id, ban: alsoWipe, reason }, 'Conta excluída.'))
+              }
+            >
+              {busy ? 'AGUARDE...' : pending.kind === 'ban' ? 'CONFIRMAR BANIMENTO' : 'CONFIRMAR EXCLUSÃO'}
+            </button>
+            <button className="btn btn--ghost btn--sm" onClick={() => setPending(null)}>
+              CANCELAR
+            </button>
+          </div>
+        </div>
+      ) : (
+        u.role !== 'admin' && (
+          <div className="user-card__actions">
+            {u.banned_at ? (
+              <button
+                className="btn btn--green btn--sm"
+                disabled={busy}
+                onClick={() => void run({ action: 'unban', user_id: u.id, email: u.email }, 'Banimento removido.')}
+              >
+                DESBANIR
+              </button>
+            ) : (
+              <button className="btn btn--red btn--sm" onClick={() => open('ban', u)}>
+                BANIR
+              </button>
+            )}
+            {u.id && u.disposals > 0 && (
+              <button className="btn btn--ghost btn--sm" disabled={busy} onClick={() => wipe(u)}>
+                APAGAR REGISTROS
+              </button>
+            )}
+            {u.id && (
+              <button className="btn btn--ghost btn--sm" onClick={() => open('delete', u)}>
+                EXCLUIR CONTA
+              </button>
+            )}
+          </div>
+        )
+      )}
+    </div>
+  )
+
+  return (
+    <>
+      <input
+        className="input"
+        placeholder="Buscar por nome ou e-mail"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        style={{ marginBottom: 12 }}
+      />
+      {msg && <p className="muted">{msg}</p>}
+      {!users ? (
+        <p className="muted">Carregando...</p>
+      ) : (
+        <>
+          <h2>USUÁRIOS ({active.length})</h2>
+          {active.length === 0 && <p className="muted">Ninguém encontrado.</p>}
+          {active.map(card)}
+          {banned.length > 0 && (
+            <>
+              <h2 style={{ marginTop: 18 }}>BANIDOS ({banned.length})</h2>
+              {banned.map(card)}
+            </>
+          )}
+        </>
+      )}
+    </>
+  )
+}
+
 export function Admin() {
   const [tab, setTab] = useState<Tab>('bins')
   return (
@@ -342,6 +513,7 @@ export function Admin() {
             ['bins', 'LIXEIRAS'],
             ['review', 'REVISÃO'],
             ['season', 'TEMPORADA'],
+            ['users', 'USUÁRIOS'],
           ] as const
         ).map(([id, label]) => (
           <button key={id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>
@@ -352,6 +524,7 @@ export function Admin() {
       {tab === 'bins' && <BinsTab />}
       {tab === 'review' && <ReviewTab />}
       {tab === 'season' && <SeasonTab />}
+      {tab === 'users' && <UsersTab />}
     </div>
   )
 }

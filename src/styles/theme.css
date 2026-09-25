@@ -1151,3 +1151,28 @@ p {
   text-align: center;
   margin-bottom: 12px;
 }
+.user-card__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.user-card__head > div {
+  flex: 1;
+}
+.user-card__email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.user-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.user-card__confirm {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+}

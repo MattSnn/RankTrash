@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { formatPersonName, looksLikeEmailName } from './names'
-import type { Api, Bin, ClaimResult, Disposal, LeaderRow, Profile, RegisterResult } from './types'
+import type { AdminUser, Api, Bin, ClaimResult, Disposal, LeaderRow, Profile, RegisterResult } from './types'
 
 const DISPOSAL_FIELDS =
   'id, user_id, bin_id, item_label, material, points, status, reason, created_at, ai, breakdown, image_path, source'
@@ -261,6 +261,18 @@ export function createSupabaseApi(url: string, anonKey: string): Api {
     async closeSeason(id) {
       check(await sb.rpc('close_season', { p_season: id }))
       return check(await sb.rpc('leaderboard', { p_season: id, p_limit: 3 })) as LeaderRow[]
+    },
+    async adminListUsers(search) {
+      return check(await sb.rpc('admin_list_users', { p_search: search })) as AdminUser[]
+    },
+    async adminUserAction(input) {
+      const { data, error } = await sb.functions.invoke('admin-users', { body: input })
+      if (error) {
+        // a função devolve { error } com a mensagem; o supabase-js embrulha num FunctionsHttpError
+        const detail = await (error as { context?: Response }).context?.json?.().catch(() => null)
+        throw new Error(detail?.error ?? error.message)
+      }
+      if (data?.error) throw new Error(data.error)
     },
   }
   return api

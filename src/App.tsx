@@ -5,6 +5,7 @@ import { useSession } from './lib/session'
 import { Admin } from './pages/Admin'
 import { ExternalLogin } from './pages/ExternalLogin'
 import { Legal } from './pages/Legal'
+import { Suspended } from './pages/Suspended'
 import { Login } from './pages/Login'
 import { MapPage } from './pages/MapPage'
 import { Onboarding } from './pages/Onboarding'
@@ -32,6 +33,7 @@ function Screens() {
   if (loading) return <LoadingBar label="INICIANDO TRACKER" />
   if (!email) return <Login />
   if (!profile) return <LoadingBar label="CARREGANDO PERFIL" />
+  if (profile.banned_at) return <Suspended reason={profile.ban_reason ?? null} />
   if (!profile.consent_at) return <Onboarding />
 
   return (

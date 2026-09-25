@@ -19,7 +19,30 @@ export interface Profile {
   consent_at: string | null
   /** nome completo da conta Microsoft (para sugerir o nome de exibição) */
   full_name?: string
+  banned_at?: string | null
+  ban_reason?: string | null
 }
+
+/** Linha da aba USUÁRIOS. id nulo = e-mail banido cuja conta já foi apagada. */
+export interface AdminUser {
+  id: string | null
+  email: string
+  display_name: string
+  course: string
+  role: Role
+  created_at: string
+  last_sign_in_at: string | null
+  banned_at: string | null
+  ban_reason: string | null
+  disposals: number
+  season_points: number
+}
+
+export type AdminUserAction =
+  | { action: 'delete_disposals'; user_id: string }
+  | { action: 'ban'; user_id: string; reason: string; delete_disposals: boolean }
+  | { action: 'unban'; user_id: string | null; email: string }
+  | { action: 'delete_account'; user_id: string; ban: boolean; reason: string }
 
 export interface Bin {
   id: string
@@ -146,4 +169,6 @@ export interface Api {
   revokeDisposal(id: string): Promise<void>
   updateSeasonPrize(id: string, prize: string): Promise<void>
   closeSeason(id: string): Promise<LeaderRow[]>
+  adminListUsers(search: string): Promise<AdminUser[]>
+  adminUserAction(input: AdminUserAction): Promise<void>
 }

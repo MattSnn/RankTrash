@@ -19,6 +19,7 @@ function MicrosoftLogo() {
 }
 
 export function loginErrorMessage(raw: string): string {
+  if (/banid/i.test(raw)) return 'Esta conta foi banida do RankTrash.'
   if (/dom[ií]nio permitido/i.test(raw)) return 'Use sua conta @facens.br. Contas de fora da Facens não podem entrar.'
   if (/consent|admin/i.test(raw)) return 'A Facens precisa liberar o RankTrash na conta Microsoft. Avise a organização da campanha.'
   return `Não foi possível entrar (${raw.slice(0, 120)}).`
