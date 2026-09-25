@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
+import { InstallBanner } from '../components/InstallPrompt'
 import { Mascot } from '../components/Mascot'
 import { allowedDomains, api, isAllowedEmail } from '../lib/api'
 import { play } from '../lib/sfx'
@@ -9,6 +10,23 @@ export function Login() {
   const [step, setStep] = useState<'email' | 'code'>('email')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [cooldown, setCooldown] = useState(0)
+
+  useEffect(() => {
+    if (cooldown <= 0) return
+    const t = setTimeout(() => setCooldown((c) => c - 1), 1000)
+    return () => clearTimeout(t)
+  }, [cooldown])
+
+  async function resend() {
+    setError(null)
+    try {
+      await api.sendLoginCode(email.trim().toLowerCase())
+      setCooldown(60)
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  }
 
   async function sendCode(e: FormEvent) {
     e.preventDefault()
@@ -21,6 +39,7 @@ export function Login() {
     try {
       await api.sendLoginCode(email.trim().toLowerCase())
       setStep('code')
+      setCooldown(60)
       play('click')
     } catch (err) {
       setError((err as Error).message)
@@ -80,7 +99,7 @@ export function Login() {
               ) : (
                 <form onSubmit={verify}>
                   <p className="muted">
-                    Enviamos um e-mail para {email}. Digite o código ou toque no link do e-mail.
+                    Enviamos um código de 6 dígitos para {email}. Digite aqui (confira o spam).
                     {api.demo && ' (demo: qualquer código)'}
                   </p>
                   <label className="field">
@@ -99,7 +118,16 @@ export function Login() {
                   <button className="btn btn--green btn--block" disabled={busy}>
                     {busy ? 'VERIFICANDO...' : 'ENTRAR'}
                   </button>
-                  <button type="button" className="btn btn--ghost btn--block" style={{ marginTop: 14 }} onClick={() => setStep('email')}>
+                  <button
+                    type="button"
+                    className="btn btn--ghost btn--block"
+                    style={{ marginTop: 14 }}
+                    onClick={() => void resend()}
+                    disabled={cooldown > 0}
+                  >
+                    {cooldown > 0 ? `REENVIAR EM ${cooldown}S` : 'REENVIAR CÓDIGO'}
+                  </button>
+                  <button type="button" className="btn btn--ghost btn--block" style={{ marginTop: 12 }} onClick={() => setStep('email')}>
                     TROCAR E-MAIL
                   </button>
                 </form>
@@ -109,6 +137,7 @@ export function Login() {
           </div>
         </main>
       </div>
+      <InstallBanner />
     </div>
   )
 }

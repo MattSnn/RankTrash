@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { InstallGate } from './components/InstallPrompt'
 import { Layout, LoadingBar } from './components/Layout'
 import { useSession } from './lib/session'
 import { Admin } from './pages/Admin'
@@ -11,6 +12,15 @@ import { Register } from './pages/Register'
 import { Rules } from './pages/Rules'
 
 export function App() {
+  return (
+    <>
+      <InstallGate />
+      <Screens />
+    </>
+  )
+}
+
+function Screens() {
   const { loading, email, profile } = useSession()
 
   if (loading) return <LoadingBar label="INICIANDO TRACKER" />

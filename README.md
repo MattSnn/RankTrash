@@ -52,7 +52,12 @@ tests/          testes (vitest) das regras
    npx supabase db push       # aplica supabase/migrations
    ```
    Opcional: rode `supabase/seed.sql` no SQL Editor para criar lixeiras de exemplo.
-3. **Login por código:** em *Authentication → Email Templates*, inclua `{{ .Token }}` no corpo dos modelos **Magic Link** e **Confirm signup** (o app usa o código de 6 dígitos, que funciona melhor em PWA do que link). Se o e-mail dos alunos não for `@facens.br`, ajuste `app_config.allowed_email_domains` no banco **e** `VITE_ALLOWED_EMAIL_DOMAINS`.
+3. **Login por código:** em *Authentication → Email Templates*, nos modelos **Magic Link** e **Confirm signup**:
+   * **Assunto:** `Seu código RankTrash: {{ .Token }}`
+   * **Corpo:** cole o HTML de [`supabase/templates/login-code.html`](supabase/templates/login-code.html) (só o código, sem link: o link abriria no navegador, fora do app instalado).
+
+   Se o e-mail dos alunos não for `@facens.br`, ajuste `app_config.allowed_email_domains` no banco **e** `VITE_ALLOWED_EMAIL_DOMAINS`.
+   O remetente, o limite de envios e o envio para qualquer e-mail dependem de um **SMTP próprio** (*Authentication → Emails → SMTP Settings*; Resend e Brevo têm plano grátis).
 4. **Gemini:** gere uma chave em https://aistudio.google.com/apikey e configure a função:
    ```bash
    npx supabase secrets set GEMINI_API_KEY=sua-chave

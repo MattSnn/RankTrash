@@ -60,6 +60,11 @@ export const ICONS = {
   target: ['...KKK...', '.KK...KK.', '.K..K..K.', 'K..KKK..K', 'K.KK.KK.K', 'K..KKK..K', '.K..K..K.', '.KK...KK.', '...KKK...'],
   check: ['.........', '........K', '.......KK', '......KK.', 'K....KK..', 'KK..KK...', '.KKKK....', '..KK.....', '.........'],
   cross: ['.........', 'KK.....KK', '.KK...KK.', '..KK.KK..', '...KKK...', '..KK.KK..', '.KK...KK.', 'KK.....KK', '.........'],
+  share: ['....K....', '...KKK...', '..K.K.K..', '....K....', 'KK..K..KK', 'K...K...K', 'K.......K', 'K.......K', 'KKKKKKKKK'],
+  addBox: ['KKKKKKKKK', 'K.......K', 'K...K...K', 'K...K...K', 'K.KKKKK.K', 'K...K...K', 'K...K...K', 'K.......K', 'KKKKKKKKK'],
+  dots: ['....K....', '....K....', '.........', '.........', '....K....', '....K....', '.........', '.........', '....K....'],
+  more: ['.........', '.........', '.........', '.........', 'KK.KK.KK.', 'KK.KK.KK.', '.........', '.........', '.........'],
+  phone: ['..KKKKK..', '..K...K..', '..K...K..', '..K...K..', '..K...K..', '..K...K..', '..K...K..', '..KK.KK..', '..KKKKK..'],
 } satisfies Record<string, string[]>
 
 export type IconName = keyof typeof ICONS

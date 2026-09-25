@@ -2,7 +2,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useEffect, useMemo, type ReactNode } from 'react'
 import { MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet'
-import { DEFAULT_ZOOM, FACENS_CENTER } from '../lib/campus'
+import { DEFAULT_ZOOM, FACENS_CENTER, MAP_ATTRIBUTION, MAP_MAX_ZOOM, MAP_TILE_FILTER, MAP_TILE_URL } from '../lib/campus'
 import type { Bin } from '../lib/types'
 import { iconSvg } from './PixelArt'
 
@@ -35,7 +35,7 @@ function ClickHandler({ onClick }: { onClick?: (lat: number, lng: number) => voi
 function FlyTo({ target }: { target: { lat: number; lng: number; key: number } | null }) {
   const map = useMap()
   useEffect(() => {
-    if (target) map.flyTo([target.lat, target.lng], Math.max(map.getZoom(), 18), { duration: 0.8 })
+    if (target) map.flyTo([target.lat, target.lng], Math.min(Math.max(map.getZoom(), 18), MAP_MAX_ZOOM), { duration: 0.8 })
   }, [map, target])
   return null
 }
@@ -54,13 +54,15 @@ interface CampusMapProps {
 export function CampusMap({ bins, visited, selectedId, me, flyTo, onMapClick, renderPopup, onBinClick }: CampusMapProps) {
   const center = useMemo<[number, number]>(() => [FACENS_CENTER.lat, FACENS_CENTER.lng], [])
   return (
-    <MapContainer center={center} zoom={DEFAULT_ZOOM} zoomControl={false} attributionControl maxZoom={20}>
-      <TileLayer
-        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>'
-        subdomains="abcd"
-        maxZoom={20}
-      />
+    <MapContainer
+      center={center}
+      zoom={DEFAULT_ZOOM}
+      zoomControl={false}
+      attributionControl
+      maxZoom={MAP_MAX_ZOOM}
+      className={MAP_TILE_FILTER === 'dark' ? 'map--dark' : undefined}
+    >
+      <TileLayer url={MAP_TILE_URL} attribution={MAP_ATTRIBUTION} maxZoom={MAP_MAX_ZOOM} />
       <ClickHandler onClick={onMapClick} />
       <FlyTo target={flyTo ?? null} />
       {bins.map((bin) => {

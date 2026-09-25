@@ -226,7 +226,6 @@ export function createMockApi(): Api {
       const streak = nextStreak(profile.last_disposal_date, today, profile.streak)
       const score = computePoints({
         material: ai.material,
-        binVisible: ai.bin_visible,
         firstVisitToBin: !mine.some((d) => d.bin_id === geo.bin.id),
         firstOfDay: todays.length === 0,
         streakDays: streak,

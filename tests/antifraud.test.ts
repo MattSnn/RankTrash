@@ -125,3 +125,35 @@ describe('parseGeminiResponse', () => {
     expect(() => parseGeminiResponse({ candidates: [] })).toThrow()
   })
 })
+
+describe('classifyImage (retry e modelo reserva)', () => {
+  const ok = { candidates: [{ content: { parts: [{ text: JSON.stringify({ is_trash: true, item_label: 'Lata', material: 'aluminio', confidence: 0.9 }) }] } }] }
+  it('tenta de novo em 503 e cai para o modelo reserva', async () => {
+    const { classifyImage } = await import('../supabase/functions/_shared/gemini.ts')
+    const calls: string[] = []
+    const realFetch = globalThis.fetch
+    globalThis.fetch = (async (url: string) => {
+      calls.push(url.split('/models/')[1].split(':')[0])
+      return calls.length < 3 ? new Response('busy', { status: 503 }) : new Response(JSON.stringify(ok), { status: 200 })
+    }) as typeof fetch
+    try {
+      const r = await classifyImage('k', 'b64', 'image/jpeg')
+      expect(r.item_label).toBe('Lata')
+      expect(calls).toEqual(['gemini-2.5-flash', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'])
+    } finally {
+      globalThis.fetch = realFetch
+    }
+  })
+  it('não insiste em erro de chave (403)', async () => {
+    const { classifyImage } = await import('../supabase/functions/_shared/gemini.ts')
+    const realFetch = globalThis.fetch
+    let n = 0
+    globalThis.fetch = (async () => { n++; return new Response('forbidden', { status: 403 }) }) as typeof fetch
+    try {
+      await expect(classifyImage('k', 'b64', 'image/jpeg')).rejects.toThrow(/403/)
+      expect(n).toBe(1)
+    } finally {
+      globalThis.fetch = realFetch
+    }
+  })
+})

@@ -5,7 +5,7 @@ import { MATERIAL_INFO } from '../../supabase/functions/_shared/materials.ts'
 import { Mascot } from '../components/Mascot'
 import { Icon } from '../components/PixelArt'
 import { api } from '../lib/api'
-import { captureFrame, openRearCamera } from '../lib/image'
+import { ALLOW_GALLERY, captureFrame, fileToJpeg, openRearCamera } from '../lib/image'
 import { useSession } from '../lib/session'
 import { play } from '../lib/sfx'
 import type { Bin, RegisterResult } from '../lib/types'
@@ -55,7 +55,8 @@ export function Register() {
   const [params] = useSearchParams()
   const [bins, setBins] = useState<Bin[]>([])
   const [step, setStep] = useState<Step>('camera')
-  const [photo, setPhoto] = useState<{ blob: Blob; url: string } | null>(null)
+  const [photo, setPhoto] = useState<{ blob: Blob; url: string; source: 'camera' | 'gallery' } | null>(null)
+  const galleryRef = useRef<HTMLInputElement>(null)
   const [result, setResult] = useState<RegisterResult | null>(null)
   const [chosenBin, setChosenBin] = useState<string | null>(params.get('bin'))
 
@@ -80,9 +81,21 @@ export function Register() {
     if (!video) return
     play('shutter')
     const blob = await captureFrame(video)
-    setPhoto({ blob, url: URL.createObjectURL(blob) })
+    setPhoto({ blob, url: URL.createObjectURL(blob), source: 'camera' })
     setStep('preview')
   }, [camera.videoRef])
+
+  async function pickFromGallery(file: File | undefined) {
+    if (!file) return
+    try {
+      const blob = await fileToJpeg(file)
+      play('shutter')
+      setPhoto({ blob, url: URL.createObjectURL(blob), source: 'gallery' })
+      setStep('preview')
+    } catch {
+      alert('Não foi possível abrir essa imagem. Tente outra (JPG ou PNG).')
+    }
+  }
 
   async function send() {
     if (!photo || !reading || !selected) return
@@ -94,6 +107,7 @@ export function Register() {
       lng: reading.lng,
       accuracy: reading.accuracy,
       binId: selected.bin.id,
+      source: photo.source,
     })
     setResult(res)
     setStep('result')
@@ -146,9 +160,8 @@ export function Register() {
             <Icon name="target" size={14} /> {gpsChip.text}
             {reading?.simulated && ' [simulado]'}
           </span>
-          {step === 'camera' && (
-            <span className="hud-chip">Mostre o item. Se der, com a lixeira ao fundo: +30%</span>
-          )}
+          {step === 'camera' && <span className="hud-chip">Mostre bem o item que vai descartar</span>}
+          {photo?.source === 'gallery' && step !== 'camera' && <span className="hud-chip warn">Foto da galeria (modo teste)</span>}
         </div>
       </div>
       <div className="camera__controls">
@@ -166,9 +179,31 @@ export function Register() {
           </div>
         )}
         {step === 'camera' && (
-          <button className="shutter" onClick={shoot} disabled={!camera.ready} aria-label="Tirar foto">
-            <Icon name="camera" size={30} />
-          </button>
+          <div className="shutter-row">
+            {ALLOW_GALLERY ? (
+              <>
+                <button className="btn btn--sm gallery-btn" onClick={() => galleryRef.current?.click()}>
+                  GALERIA
+                </button>
+                <input
+                  ref={galleryRef}
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={(e) => {
+                    void pickFromGallery(e.target.files?.[0])
+                    e.target.value = ''
+                  }}
+                />
+              </>
+            ) : (
+              <span />
+            )}
+            <button className="shutter" onClick={shoot} disabled={!camera.ready} aria-label="Tirar foto">
+              <Icon name="camera" size={30} />
+            </button>
+            <span />
+          </div>
         )}
         {step === 'preview' && (
           <div className="row">

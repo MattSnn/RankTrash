@@ -18,13 +18,13 @@ export const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash'
 
 export const GEMINI_PROMPT = `Você é o classificador de resíduos do app RankTrash, da campanha Lixo Zero de uma universidade.
 Analise a foto tirada por um aluno que vai descartar um resíduo e responda SOMENTE no JSON pedido.
-- is_trash: true se o foco da foto é um resíduo/objeto descartável (lata, garrafa, embalagem, papel, resto de comida, pilha...). false para pessoas, paisagens, animais, fotos vazias ou objetos que claramente não estão sendo descartados.
+- is_trash: true se a foto mostra algum resíduo ou objeto descartável (lata, garrafa, copo, embalagem, papel, guardanapo, resto de comida, pilha...), esteja ele na mão, na mesa, no chão ou na lixeira. Seja tolerante: NÃO é preciso aparecer lixeira. false apenas quando não há nenhum objeto descartável (pessoas, paisagens, animais, foto escura/vazia).
 - item_label: nome curto do item em português (ex.: "Lata de refrigerante").
 - material: o material predominante, para a coleta seletiva. Latas de bebida = "aluminio".
 - brand: marca visível ou "" se não der para ver.
 - color: cor predominante do item.
 - condition: estado do item (ex.: "amassada", "intacta", "rasgado", "vazia").
-- bin_visible: true se uma lixeira/coletor aparece na foto (mesmo parcialmente).
+- bin_visible: true se uma lixeira/coletor aparece na foto (apenas informativo).
 - is_screen_or_print: true se a imagem parece ser foto de uma tela, de uma foto impressa ou uma imagem da internet (moiré, pixels de tela, bordas de monitor, reflexo de vidro de tela).
 - confidence: 0 a 1, sua confiança na identificação do item e do material.
 - tip: uma dica curta (máx. 90 caracteres) sobre como descartar esse item corretamente.`
@@ -97,17 +97,33 @@ export function parseGeminiResponse(body: unknown): AiResult {
   }
 }
 
+/** Modelos reserva, usados quando o principal está sobrecarregado ou indisponível. */
+export const FALLBACK_GEMINI_MODELS = ['gemini-2.5-flash-lite', 'gemini-2.0-flash']
+const RETRYABLE = new Set([429, 500, 502, 503, 504])
+
 export async function classifyImage(
   apiKey: string,
   imageBase64: string,
   mimeType: string,
   model = DEFAULT_GEMINI_MODEL,
 ): Promise<AiResult> {
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-goog-api-key': apiKey },
-    body: JSON.stringify(buildGeminiRequest(imageBase64, mimeType)),
-  })
-  if (!res.ok) throw new Error(`Gemini ${res.status}: ${(await res.text()).slice(0, 300)}`)
-  return parseGeminiResponse(await res.json())
+  const body = JSON.stringify(buildGeminiRequest(imageBase64, mimeType))
+  const models = [model, ...FALLBACK_GEMINI_MODELS.filter((m) => m !== model)]
+  let lastError = new Error('Gemini indisponível')
+  for (const m of models) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-goog-api-key': apiKey },
+        body,
+      })
+      if (res.ok) return parseGeminiResponse(await res.json())
+      lastError = new Error(`Gemini ${m} ${res.status}: ${(await res.text()).slice(0, 300)}`)
+      console.warn(lastError.message)
+      if (res.status === 404) break // modelo não existe: tenta o próximo
+      if (!RETRYABLE.has(res.status)) throw lastError // chave inválida, requisição errada etc.
+      await new Promise((r) => setTimeout(r, 700 * (attempt + 1)))
+    }
+  }
+  throw lastError
 }

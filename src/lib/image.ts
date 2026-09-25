@@ -1,16 +1,34 @@
 import { dhashFromGray, grayGrid } from '../../supabase/functions/_shared/antifraud.ts'
 
-/** Captura o frame atual do vídeo como JPEG, com o maior lado limitado a `maxSide`. */
-export function captureFrame(video: HTMLVideoElement, maxSide = 1280, quality = 0.85): Promise<Blob> {
-  const scale = Math.min(1, maxSide / Math.max(video.videoWidth, video.videoHeight))
+/** Desenha a imagem em JPEG, com o maior lado limitado a `maxSide` (o servidor só aceita JPEG). */
+function drawToJpeg(source: CanvasImageSource, width: number, height: number, maxSide = 1280, quality = 0.85): Promise<Blob> {
+  const scale = Math.min(1, maxSide / Math.max(width, height))
   const canvas = document.createElement('canvas')
-  canvas.width = Math.round(video.videoWidth * scale)
-  canvas.height = Math.round(video.videoHeight * scale)
-  canvas.getContext('2d')!.drawImage(video, 0, 0, canvas.width, canvas.height)
+  canvas.width = Math.round(width * scale)
+  canvas.height = Math.round(height * scale)
+  canvas.getContext('2d')!.drawImage(source, 0, 0, canvas.width, canvas.height)
   return new Promise((resolve, reject) =>
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Falha ao capturar a foto'))), 'image/jpeg', quality),
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Falha ao processar a foto'))), 'image/jpeg', quality),
   )
 }
+
+/** Captura o frame atual do vídeo como JPEG. */
+export function captureFrame(video: HTMLVideoElement): Promise<Blob> {
+  return drawToJpeg(video, video.videoWidth, video.videoHeight)
+}
+
+/** Converte uma foto escolhida da galeria em JPEG reduzido (modo teste). */
+export async function fileToJpeg(file: File): Promise<Blob> {
+  const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' })
+  try {
+    return await drawToJpeg(bmp, bmp.width, bmp.height)
+  } finally {
+    bmp.close()
+  }
+}
+
+/** Liberar envio de fotos da galeria (só para testes). */
+export const ALLOW_GALLERY = import.meta.env.VITE_ALLOW_GALLERY === 'true'
 
 /** dHash calculado no navegador (usado no modo demo; em produção o servidor calcula). */
 export async function dhashOfBlob(blob: Blob): Promise<string> {

@@ -4,6 +4,7 @@ import { api } from '../lib/api'
 import { play, setSoundEnabled, soundEnabled } from '../lib/sfx'
 import { useSession } from '../lib/session'
 import type { FeedItem } from '../lib/types'
+import { InstallBanner } from './InstallPrompt'
 import { MascotEyes } from './Mascot'
 import { Icon } from './PixelArt'
 
@@ -83,6 +84,7 @@ export function Layout({ children }: { children: ReactNode }) {
       <div className="bezel">
         <main className="screen">{children}</main>
       </div>
+      <InstallBanner />
       <Ticker />
       <nav className="nav">
         <NavLink to="/" end onClick={() => play('click')}>

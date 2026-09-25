@@ -1,7 +1,8 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type { Api, Bin, Disposal, LeaderRow, Profile, RegisterResult } from './types'
 
-const DISPOSAL_FIELDS = 'id, user_id, bin_id, item_label, material, points, status, reason, created_at, ai, breakdown, image_path'
+const DISPOSAL_FIELDS =
+  'id, user_id, bin_id, item_label, material, points, status, reason, created_at, ai, breakdown, image_path, source'
 
 type DisposalRow = Disposal & { image_path: string | null }
 
@@ -42,9 +43,8 @@ export function createSupabaseApi(url: string, anonKey: string): Api {
       return () => data.subscription.unsubscribe()
     },
     async sendLoginCode(email) {
-      check(
-        await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: true, emailRedirectTo: window.location.origin } }),
-      )
+      // Login por código de 6 dígitos (o e-mail não traz link: link abriria no navegador, fora do PWA)
+      check(await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: true } }))
     },
     async verifyLoginCode(email, code) {
       check(await sb.auth.verifyOtp({ email, token: code, type: 'email' }))
@@ -84,6 +84,7 @@ export function createSupabaseApi(url: string, anonKey: string): Api {
       form.append('lng', String(input.lng))
       form.append('accuracy', String(input.accuracy))
       if (input.binId) form.append('bin_id', input.binId)
+      form.append('source', input.source ?? 'camera')
       const { data, error } = await sb.functions.invoke('register-disposal', { body: form })
       if (error) {
         // Erros 4xx da função trazem o JSON com a mensagem amigável

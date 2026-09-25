@@ -1,7 +1,6 @@
 // Regras de pontuação. Rodam no servidor (Edge Function) e no modo demo.
 import { MATERIAL_INFO, type Material } from './materials.ts'
 
-export const BIN_VISIBLE_MULTIPLIER = 1.3
 export const STREAK_MULTIPLIER = 1.2
 export const STREAK_MIN_DAYS = 3
 export const FIRST_VISIT_BONUS = 5
@@ -12,7 +11,6 @@ export const HALF_VALUE_PER_MATERIAL_PER_DAY = 10
 
 export interface ScoreInput {
   material: Material
-  binVisible: boolean
   firstVisitToBin: boolean
   firstOfDay: boolean
   /** streak já contando o dia de hoje */
@@ -46,10 +44,6 @@ export function computePoints(input: ScoreInput): ScoreResult {
   if (factor < 1) {
     points *= factor
     breakdown.push({ label: 'Mesmo material hoje', value: `×${factor}` })
-  }
-  if (input.binVisible) {
-    points *= BIN_VISIBLE_MULTIPLIER
-    breakdown.push({ label: 'Lixeira na foto', value: `×${BIN_VISIBLE_MULTIPLIER}` })
   }
   if (input.streakDays >= STREAK_MIN_DAYS) {
     points *= STREAK_MULTIPLIER

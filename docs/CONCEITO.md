@@ -52,7 +52,7 @@ O objetivo de **gerar dados** (quantidade, tipo, local e horário dos descartes)
 1. **Regra de proximidade:** a distância até a lixeira precisa ser menor que `raio da lixeira + min(margem do GPS, 30 m)`. Leituras com margem acima de **60 m** são recusadas ("vá para um lugar mais aberto").
 2. O app acompanha o GPS enquanto a câmera está aberta e usa **a leitura mais precisa dos últimos 15 s**.
 3. Se houver várias lixeiras no raio, **o aluno escolhe qual** (chips na tela).
-4. **A foto é a segunda prova:** a IA responde se aparece uma lixeira na foto. Se aparecer, o registro ganha **×1,3**.
+4. **A foto é a segunda prova:** a IA confirma que há um resíduo de verdade (e registra se aparece lixeira, só como dado de auditoria; não é obrigatório nem dá bônus).
 5. **Auditoria humana** do top 10 antes da premiação.
 
 **Plano B (se a fraude aparecer no piloto):** um adesivo com QR code em cada lixeira. O banco já tem o campo `bins.qr_code` reservado.
@@ -70,7 +70,7 @@ O objetivo de **gerar dados** (quantidade, tipo, local e horário dos descartes)
 | Eletrônico/Pilha | 15 | Laranja (ponto especial) |
 | Não reciclável | 2 | Cinza |
 
-**Bônus:** lixeira na foto ×1,3 · streak de 3+ dias ×1,2 · 1ª visita à lixeira +5 · 1º descarte do dia +3.
+**Bônus:** streak de 3+ dias ×1,2 · 1ª visita à lixeira +5 · 1º descarte do dia +3.
 **Retorno decrescente:** o mesmo material no mesmo dia vale 100% nos 5 primeiros registros, 50% até o 10º e depois 0.
 **Nível:** `floor(√(XP/10))` (nível 1 = 10 XP, nível 5 = 250 XP, nível 10 = 1000 XP).
 

@@ -15,7 +15,7 @@ export function Rules() {
       <div className="card">
         <ol style={{ paddingLeft: 22, margin: 0 }}>
           <li>Vá até uma lixeira marcada no mapa.</li>
-          <li>Toque em DESCARTAR e fotografe o item (de preferência com a lixeira ao fundo).</li>
+          <li>Toque em DESCARTAR e fotografe o item.</li>
           <li>A IA identifica o item e o material e diz em qual lixeira ele vai.</li>
           <li>Descarte e ganhe pontos. No fim do mês, o top 3 ganha prêmios!</li>
         </ol>
@@ -33,7 +33,6 @@ export function Rules() {
       </div>
       <div className="card">
         <h2>BÔNUS</h2>
-        <p>★ Lixeira aparecendo na foto: ×1,3</p>
         <p>★ Streak de {STREAK_MIN_DAYS}+ dias seguidos: ×1,2</p>
         <p>★ 1ª visita a uma lixeira: +{FIRST_VISIT_BONUS}</p>
         <p>★ 1º descarte do dia: +{FIRST_OF_DAY_BONUS}</p>

@@ -148,6 +148,7 @@ function DisposalCard({ d, actions }: { d: Disposal; actions: React.ReactNode })
       {d.image_url ? <img src={d.image_url} alt={d.item_label} /> : <div className="noimg" />}
       <div>
         <strong>{d.item_label}</strong>
+        {d.source === 'gallery' && <span className="tag tag--pending" style={{ marginLeft: 6 }}>GALERIA</span>}
         <div className="muted" style={{ fontSize: 16 }}>
           {d.display_name && `${d.display_name} · `}
           {d.material && MATERIAL_INFO[d.material].label} · {d.points} pts

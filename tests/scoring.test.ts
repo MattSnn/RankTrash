@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { computePoints, diminishingFactor, levelFromXp, nextStreak, xpForLevel } from '../supabase/functions/_shared/scoring.ts'
 
-const base = { material: 'aluminio' as const, binVisible: false, firstVisitToBin: false, firstOfDay: false, streakDays: 1, sameMaterialToday: 0 }
+const base = { material: 'aluminio' as const, firstVisitToBin: false, firstOfDay: false, streakDays: 1, sameMaterialToday: 0 }
 
 describe('computePoints', () => {
   it('usa a pontuação base do material', () => {
@@ -10,10 +10,10 @@ describe('computePoints', () => {
   })
 
   it('aplica multiplicadores e bônus fixos', () => {
-    // 10 * 1.3 * 1.2 = 15.6 -> 16, +5 +3
-    const r = computePoints({ ...base, binVisible: true, streakDays: 3, firstVisitToBin: true, firstOfDay: true })
-    expect(r.points).toBe(24)
-    expect(r.breakdown).toHaveLength(5)
+    // 10 * 1.2 = 12, +5 +3
+    const r = computePoints({ ...base, streakDays: 3, firstVisitToBin: true, firstOfDay: true })
+    expect(r.points).toBe(20)
+    expect(r.breakdown).toHaveLength(4)
   })
 
   it('tem retorno decrescente para o mesmo material no dia', () => {

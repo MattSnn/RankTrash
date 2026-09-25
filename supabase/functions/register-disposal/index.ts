@@ -74,6 +74,7 @@ Deno.serve(async (req) => {
   const lng = Number(form.get('lng'))
   const accuracy = Number(form.get('accuracy'))
   const binId = (form.get('bin_id') as string | null) || null
+  const source = form.get('source') === 'gallery' ? 'gallery' : 'camera'
   if (!(image instanceof File)) return fail('input', 'Foto ausente')
   if (!MIME_TYPES.includes(image.type)) return fail('input', 'Envie a foto em JPEG')
   if (image.size > MAX_IMAGE_BYTES) return fail('input', 'Foto muito grande (máx. 3 MB)')
@@ -164,6 +165,7 @@ Deno.serve(async (req) => {
     lat,
     lng,
     accuracy,
+    source,
   }
 
   if (aiCheck.reject) {
@@ -184,7 +186,6 @@ Deno.serve(async (req) => {
   const streak = nextStreak(profile?.last_disposal_date ?? null, today, profile?.streak ?? 0)
   const score = computePoints({
     material: ai.material,
-    binVisible: ai.bin_visible,
     firstVisitToBin: (binVisits ?? 0) === 0,
     firstOfDay: todays.length === 0,
     streakDays: streak,

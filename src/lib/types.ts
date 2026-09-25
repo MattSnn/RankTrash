@@ -53,6 +53,7 @@ export interface Disposal {
   breakdown: ScoreLine[]
   image_url?: string
   display_name?: string
+  source?: 'camera' | 'gallery'
 }
 
 export interface LeaderRow {
@@ -86,6 +87,7 @@ export interface RegisterInput {
   lng: number
   accuracy: number
   binId?: string
+  source?: 'camera' | 'gallery'
 }
 
 export type RegisterResult =

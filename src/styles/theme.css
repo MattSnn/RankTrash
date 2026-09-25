@@ -417,8 +417,9 @@ p {
   background: transparent;
   font-family: var(--font-body);
 }
-.leaflet-tile-pane {
-  filter: saturate(1.4) hue-rotate(-8deg) brightness(1.05);
+/* OSM claro -> escuro: inverte e devolve os matizes; o azul do tema entra por baixo */
+.map--dark .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.8) contrast(0.95) saturate(0.5) sepia(0.35) hue-rotate(175deg);
 }
 .leaflet-control-attribution {
   background: rgba(10, 15, 31, 0.75) !important;
@@ -629,6 +630,15 @@ p {
   gap: 10px;
   background: var(--screen-2);
   border-top: 3px solid var(--bezel);
+}
+.shutter-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 10px;
+}
+.gallery-btn {
+  justify-self: start;
 }
 .shutter {
   width: 74px;
@@ -990,5 +1000,103 @@ p {
   .app {
     padding-top: 20px;
     padding-bottom: 10px;
+  }
+}
+
+/* ---------- Instalação do PWA ---------- */
+.install-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 16px calc(20px + env(safe-area-inset-bottom));
+  background: rgba(21, 42, 120, 0.97);
+  overflow-y: auto;
+}
+.install-card {
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+  background: var(--screen);
+  border: var(--px) solid var(--bezel-light);
+  outline: var(--px) solid var(--ink);
+  padding: 22px 18px;
+}
+.install-card h1 {
+  margin-top: 10px;
+}
+.install-cta {
+  font-size: 13px;
+  padding: 16px;
+  margin-top: 8px;
+}
+.install-steps {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  text-align: left;
+}
+.install-step {
+  display: grid;
+  grid-template-columns: 26px 34px 1fr;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--grid);
+  font-size: 19px;
+}
+.install-step__n {
+  font-family: var(--font-title);
+  font-size: 12px;
+  color: var(--green-light);
+}
+.install-step__icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  background: var(--cream);
+  color: var(--ink);
+}
+.install-url {
+  font-family: var(--font-title);
+  font-size: 10px;
+  color: var(--cream);
+  word-break: break-all;
+}
+.install-arrow {
+  position: fixed;
+  bottom: calc(6px + env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 30px;
+  color: var(--cream);
+  animation: bob 0.9s ease-in-out infinite alternate;
+}
+@keyframes bob {
+  to { transform: translate(-50%, 8px); }
+}
+.install-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 10px 4px 0;
+  padding: 8px;
+  border: 0;
+  background: var(--yellow);
+  color: var(--ink);
+  font-family: var(--font-title);
+  font-size: 8px;
+  cursor: pointer;
+  box-shadow: 0 0 0 3px var(--ink);
+  animation: blink 1.6s steps(2) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .install-arrow,
+  .install-banner {
+    animation: none;
   }
 }
