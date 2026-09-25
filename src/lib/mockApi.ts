@@ -11,7 +11,7 @@ import { checkGeofence, localDate } from '../../supabase/functions/_shared/geo.t
 import { MATERIAL_INFO, MATERIALS } from '../../supabase/functions/_shared/materials.ts'
 import { computePoints, nextStreak } from '../../supabase/functions/_shared/scoring.ts'
 import { FACENS_CENTER } from './campus'
-import { dhashOfBlob } from './image'
+import { dhashOfBlob, fileToJpeg } from './image'
 import { AccountGoneError, type AdminUser, type AiResult, type Api, type Bin, type Disposal, type LeaderRow, type Profile, type Season } from './types'
 
 const ME = 'demo-user'
@@ -314,6 +314,7 @@ export function createMockApi(): Api {
         bin: { id: geo.bin.id, name: geo.bin.name },
         correctBin: MATERIAL_INFO[ai.material].binLabel,
         streak,
+        reasons: aiCheck.reasons,
         message: status === 'pending' ? 'Registro enviado para revisão. Os pontos entram quando um admin aprovar.' : undefined,
       }
     },
@@ -388,6 +389,9 @@ export function createMockApi(): Api {
     },
     async listAllBins() {
       return [...bins]
+    },
+    async uploadBinPhoto(file) {
+      return URL.createObjectURL(await fileToJpeg(file))
     },
     async deleteBin(bid) {
       const i = bins.findIndex((b) => b.id === bid)

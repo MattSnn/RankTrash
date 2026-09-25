@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { fileToJpeg } from './image'
 import { formatPersonName, looksLikeEmailName } from './names'
 import {
   AccountGoneError,
@@ -241,6 +242,12 @@ export function createSupabaseApi(url: string, anonKey: string): Api {
         return check(await sb.from('bins').update(rest).eq('id', id).select('*').single()) as Bin
       }
       return check(await sb.from('bins').insert({ ...bin, created_by: await uid() }).select('*').single()) as Bin
+    },
+    async uploadBinPhoto(file) {
+      const blob = await fileToJpeg(file)
+      const path = `${crypto.randomUUID()}.jpg`
+      check(await sb.storage.from('bin-photos').upload(path, blob, { contentType: 'image/jpeg' }))
+      return sb.storage.from('bin-photos').getPublicUrl(path).data.publicUrl
     },
     async deleteBin(id) {
       // descartes antigos continuam no histórico (bin_id vira null)

@@ -1,6 +1,7 @@
 // Estilo do mapa vetorial (MapLibre) nas cores do app: campus em destaque, entorno apagado, sem ícones.
 // Tiles: OpenFreeMap (grátis, sem chave), esquema OpenMapTiles.
-import type { StyleSpecification } from 'maplibre-gl'
+import type { FilterSpecification, StyleSpecification } from 'maplibre-gl'
+import { FACENS_CENTER } from './campus'
 
 const C = {
   bg: '#08162c',
@@ -17,7 +18,12 @@ const C = {
   halo: '#08162c',
 }
 
-const CAMPUS = ['university', 'college', 'school']
+// Só a área da Facens (a que contém o centro do campus). Sem isso, qualquer escola/faculdade do mapa ficava azul.
+const CAMPUS: FilterSpecification = [
+  'all',
+  ['in', ['get', 'class'], ['literal', ['university', 'college', 'school']]],
+  ['<=', ['distance', { type: 'Point', coordinates: [FACENS_CENTER.lng, FACENS_CENTER.lat] }], 60],
+]
 
 export const MAP_VECTOR_ATTRIBUTION =
   '<a href="https://openfreemap.org">OpenFreeMap</a> &copy; <a href="https://www.openmaptiles.org/">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -49,7 +55,7 @@ export const MAP_STYLE: StyleSpecification = {
       type: 'fill',
       source: 'omt',
       'source-layer': 'landuse',
-      filter: ['in', ['get', 'class'], ['literal', CAMPUS]],
+      filter: CAMPUS,
       paint: { 'fill-color': C.campus },
     },
     {
@@ -57,7 +63,7 @@ export const MAP_STYLE: StyleSpecification = {
       type: 'line',
       source: 'omt',
       'source-layer': 'landuse',
-      filter: ['in', ['get', 'class'], ['literal', CAMPUS]],
+      filter: CAMPUS,
       paint: { 'line-color': C.campusLine, 'line-width': 2, 'line-dasharray': [2, 2], 'line-opacity': 0.7 },
     },
     {

@@ -142,6 +142,7 @@ Deno.serve(async (req) => {
         .from('disposals')
         .select('user_id, bin_id, dhash, signature, created_at')
         .neq('user_id', userId)
+        .neq('status', 'rejected') // negados/anulados não contam como "foto parecida"
         .gte('created_at', since24h)
         .limit(2000),
       db.rpc('current_season'),
@@ -244,6 +245,7 @@ Deno.serve(async (req) => {
       bin: { id: bin.id, name: bin.name },
       correctBin: MATERIAL_INFO[ai.material].binLabel,
       streak,
+      reasons,
       message: needsReview ? 'Registro enviado para revisão. Os pontos entram quando um admin aprovar.' : undefined,
     })
   } finally {

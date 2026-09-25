@@ -38,17 +38,21 @@ function Ticker() {
       api
         .feed()
         .then((f) => {
-          if (!active || !f.length) return
-          messages.current = f.map(
-            (i) => `${i.display_name} descartou ${i.item_label}${i.bin_name ? ` em ${i.bin_name}` : ''} +${i.points} pts`,
-          )
+          if (!active) return
+          // sem descartes (ou todos anulados): volta às mensagens padrão
+          messages.current = f.length
+            ? f.map((i) => `${i.display_name} descartou ${i.item_label}${i.bin_name ? ` em ${i.bin_name}` : ''} +${i.points} pts`)
+            : TICKER_FALLBACK
         })
         .catch(() => undefined)
     void load()
     const t = setInterval(load, 30000)
+    const onVisible = () => document.visibilityState === 'visible' && void load()
+    document.addEventListener('visibilitychange', onVisible)
     return () => {
       active = false
       clearInterval(t)
+      document.removeEventListener('visibilitychange', onVisible)
     }
   }, [])
 

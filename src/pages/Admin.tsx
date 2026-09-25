@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { MATERIAL_INFO, MATERIALS } from '../../supabase/functions/_shared/materials.ts'
 import { CampusMap } from '../components/CampusMap'
 import { Icon } from '../components/PixelArt'
@@ -17,6 +17,7 @@ const emptyDraft = (lat: number, lng: number): BinDraft => ({
   radius_m: 15,
   accepts: [...MATERIALS],
   active: true,
+  photo_url: null,
 })
 
 function BinsTab() {
@@ -24,6 +25,23 @@ function BinsTab() {
   const [draft, setDraft] = useState<BinDraft | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [flyTo, setFlyTo] = useState<{ lat: number; lng: number; key: number } | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const photoInput = useRef<HTMLInputElement>(null)
+
+  async function uploadPhoto(file: File | undefined) {
+    if (!file) return
+    setUploading(true)
+    setMsg(null)
+    try {
+      const url = await api.uploadBinPhoto(file)
+      setDraft((d) => (d ? { ...d, photo_url: url } : d))
+      setMsg('Foto pronta. Toque em SALVAR para guardar.')
+    } catch (e) {
+      setMsg(`Não foi possível enviar a foto: ${(e as Error).message}`)
+    } finally {
+      setUploading(false)
+    }
+  }
 
   const load = useCallback(() => void api.listAllBins().then(setBins), [])
   useEffect(load, [load])
@@ -137,6 +155,30 @@ function BinsTab() {
               ))}
             </div>
           </div>
+          <div className="field">
+            <span>FOTO DO LUGAR (AJUDA O ALUNO A ACHAR A LIXEIRA)</span>
+            {draft.photo_url && <img className="bin-photo-preview" src={draft.photo_url} alt="Foto da lixeira" />}
+            <div className="row" style={{ gap: 8 }}>
+              <button type="button" className="btn btn--sm" disabled={uploading} onClick={() => photoInput.current?.click()}>
+                {uploading ? 'ENVIANDO...' : draft.photo_url ? 'TROCAR FOTO' : 'ADICIONAR FOTO'}
+              </button>
+              {draft.photo_url && (
+                <button type="button" className="btn btn--ghost btn--sm" onClick={() => setDraft({ ...draft, photo_url: null })}>
+                  REMOVER
+                </button>
+              )}
+            </div>
+            <input
+              ref={photoInput}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(e) => {
+                void uploadPhoto(e.target.files?.[0])
+                e.target.value = ''
+              }}
+            />
+          </div>
           <label className="check field">
             <input type="checkbox" checked={draft.active} onChange={(e) => setDraft({ ...draft, active: e.target.checked })} />
             Ativa
@@ -154,7 +196,7 @@ function BinsTab() {
               </button>
             )}
             <span className="spacer" />
-            <button className="btn btn--green btn--sm" onClick={save}>
+            <button className="btn btn--green btn--sm" onClick={save} disabled={uploading}>
               SALVAR
             </button>
           </div>

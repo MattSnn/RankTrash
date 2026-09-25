@@ -6,6 +6,7 @@ import { Mascot } from '../components/Mascot'
 import { Icon } from '../components/PixelArt'
 import { api } from '../lib/api'
 import { ALLOW_GALLERY, captureFrame, fileToJpeg, openRearCamera } from '../lib/image'
+import { reviewReasons } from '../lib/review'
 import { useSession } from '../lib/session'
 import { play } from '../lib/sfx'
 import type { Bin, RegisterResult } from '../lib/types'
@@ -18,6 +19,9 @@ function useCamera(active: boolean) {
   const [error, setError] = useState<string | null>(null)
   const [ready, setReady] = useState(false)
   const [attempt, setAttempt] = useState(0)
+  const trackRef = useRef<MediaStreamTrack | null>(null)
+  const [torchSupported, setTorchSupported] = useState(false)
+  const [torchOn, setTorchOn] = useState(false)
 
   useEffect(() => {
     if (!active) return
@@ -25,10 +29,16 @@ function useCamera(active: boolean) {
     let cancelled = false
     setReady(false)
     setError(null)
+    setTorchOn(false)
     openRearCamera()
       .then((s) => {
         if (cancelled) return s.getTracks().forEach((t) => t.stop())
         stream = s
+        // flash (lanterna): Android/Chrome expõe "torch"; o Safari do iPhone em geral não
+        const track = s.getVideoTracks()[0] ?? null
+        trackRef.current = track
+        const caps = track?.getCapabilities?.() as (MediaTrackCapabilities & { torch?: boolean }) | undefined
+        setTorchSupported(!!caps?.torch)
         const video = videoRef.current
         if (video) {
           video.srcObject = s
@@ -43,11 +53,24 @@ function useCamera(active: boolean) {
       )
     return () => {
       cancelled = true
+      trackRef.current = null
       stream?.getTracks().forEach((t) => t.stop())
     }
   }, [active, attempt])
 
-  return { videoRef, error, ready, retry: () => setAttempt((a) => a + 1) }
+  async function toggleTorch() {
+    const track = trackRef.current
+    if (!track) return
+    const next = !torchOn
+    try {
+      await track.applyConstraints({ advanced: [{ torch: next } as MediaTrackConstraintSet] })
+      setTorchOn(next)
+    } catch {
+      setTorchSupported(false)
+    }
+  }
+
+  return { videoRef, error, ready, retry: () => setAttempt((a) => a + 1), torchSupported, torchOn, toggleTorch }
 }
 
 export function Register() {
@@ -202,7 +225,18 @@ export function Register() {
             <button className="shutter" onClick={shoot} disabled={!camera.ready} aria-label="Tirar foto">
               <Icon name="camera" size={30} />
             </button>
-            <span />
+            {camera.torchSupported ? (
+              <button
+                className={`btn btn--sm flash-btn ${camera.torchOn ? 'flash-btn--on' : ''}`}
+                onClick={() => void camera.toggleTorch()}
+                aria-pressed={camera.torchOn}
+                aria-label={camera.torchOn ? 'Desligar flash' : 'Ligar flash'}
+              >
+                <Icon name="flash" size={16} /> {camera.torchOn ? 'ON' : 'OFF'}
+              </button>
+            ) : (
+              <span />
+            )}
           </div>
         )}
         {step === 'preview' && (
@@ -238,9 +272,20 @@ function ResultView({ result, photoUrl, onAgain }: { result: RegisterResult; pho
         {ok ? (
           <>
             <h1 style={{ marginTop: 10 }}>{result.status === 'approved' ? 'DESCARTE VALIDADO!' : 'EM REVISÃO'}</h1>
-            <div className="points">+{result.points}</div>
+            {result.status === 'pending' && (
+              <div className="review-box">
+                <b>⏳ AGUARDANDO REVISÃO</b>
+                {reviewReasons(result.reasons).map((r) => (
+                  <p key={r}>{r}</p>
+                ))}
+                <p>
+                  Um admin vai conferir a foto. Se aprovar, você ganha <b>+{result.points} pts</b> (aparece no seu Perfil).
+                </p>
+              </div>
+            )}
+            <div className={`points ${result.status === 'pending' ? 'points--pending' : ''}`}>+{result.points}</div>
             <p className="title-font" style={{ fontSize: 9 }}>
-              PONTOS{result.status === 'pending' && ' (APÓS APROVAÇÃO)'}
+              PONTOS{result.status === 'pending' && ' SE APROVADO'}
             </p>
             <div className="card" style={{ textAlign: 'left', marginTop: 14 }}>
               <div className="row" style={{ alignItems: 'flex-start' }}>
@@ -283,7 +328,7 @@ function ResultView({ result, photoUrl, onAgain }: { result: RegisterResult; pho
                   <Icon name="flame" size={16} /> Streak de {result.streak} dias!
                 </p>
               )}
-              {result.message && <p className="muted">{result.message}</p>}
+              {result.message && result.status !== 'pending' && <p className="muted">{result.message}</p>}
             </div>
           </>
         ) : (

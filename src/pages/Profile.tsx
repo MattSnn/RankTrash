@@ -5,6 +5,7 @@ import { Mascot } from '../components/Mascot'
 import { Icon, type IconName } from '../components/PixelArt'
 import { api } from '../lib/api'
 import { nameSuggestions } from '../lib/names'
+import { reviewReasons } from '../lib/review'
 import { useSession } from '../lib/session'
 import type { Bin, Disposal, LeaderRow, Material } from '../lib/types'
 
@@ -210,6 +211,7 @@ export function Profile() {
                   <small className="muted">
                     {when(d.created_at)}
                     {d.status === 'rejected' && d.reason ? ` · ${d.reason}` : ''}
+                    {d.status === 'pending' && ` · Aguardando revisão${d.reason ? `: ${reviewReasons(d.reason).join(' ')}` : ''}`}
                   </small>
                 </span>
                 <span style={{ textAlign: 'right' }}>

@@ -53,6 +53,8 @@ export interface Bin {
   radius_m: number
   accepts: Material[]
   active: boolean
+  /** foto do lugar (enviada pelo admin), mostrada no popup do mapa */
+  photo_url?: string | null
 }
 
 export interface Season {
@@ -124,6 +126,8 @@ export type RegisterResult =
       bin: { id: string; name: string }
       correctBin: string
       streak: number
+      /** motivos da revisão (quando status = pending) */
+      reasons?: string[]
       message?: string
     }
   | { status: 'rejected'; code: string; message: string; ai?: AiResult }
@@ -171,6 +175,8 @@ export interface Api {
   saveBin(bin: Omit<Bin, 'id'> & { id?: string }): Promise<Bin>
   listAllBins(): Promise<Bin[]>
   deleteBin(id: string): Promise<void>
+  /** Reduz e envia a foto de uma lixeira; devolve a URL pública. */
+  uploadBinPhoto(file: File): Promise<string>
   pendingDisposals(): Promise<Disposal[]>
   userSeasonDisposals(userId: string): Promise<Disposal[]>
   reviewDisposal(id: string, approve: boolean): Promise<void>
