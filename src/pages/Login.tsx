@@ -4,6 +4,7 @@ import { Mascot } from '../components/Mascot'
 import { PublicShell } from '../components/PublicShell'
 import { api } from '../lib/api'
 import { detectPlatform, isStandalone } from '../lib/pwa'
+import { LOGIN_NOTICE_KEY } from '../lib/session'
 import { play } from '../lib/sfx'
 
 /** Logo da Microsoft (4 quadrados), no estilo pixel. */
@@ -56,7 +57,14 @@ export function Login() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const e = readReturnError()
+    let notice: string | null = null
+    try {
+      notice = sessionStorage.getItem(LOGIN_NOTICE_KEY)
+      sessionStorage.removeItem(LOGIN_NOTICE_KEY)
+    } catch {
+      /* sem storage */
+    }
+    const e = readReturnError() ?? notice
     if (e) {
       setError(e)
       play('fail')

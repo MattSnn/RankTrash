@@ -131,6 +131,14 @@ export type RegisterResult =
 
 export type LeaderScope = 'season' | 'week'
 
+/** A conta da sessão salva não existe mais (apagada pelo admin): o app sai e volta ao login. */
+export class AccountGoneError extends Error {
+  constructor() {
+    super('Sua conta foi removida. Entre de novo para criar outra.')
+    this.name = 'AccountGoneError'
+  }
+}
+
 export type ClaimResult = 'ok' | 'wrong' | 'pending' | 'expired'
 
 export interface Api {

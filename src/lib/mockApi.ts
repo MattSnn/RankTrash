@@ -12,7 +12,7 @@ import { MATERIAL_INFO, MATERIALS } from '../../supabase/functions/_shared/mater
 import { computePoints, nextStreak } from '../../supabase/functions/_shared/scoring.ts'
 import { FACENS_CENTER } from './campus'
 import { dhashOfBlob } from './image'
-import type { AdminUser, AiResult, Api, Bin, Disposal, LeaderRow, Profile, Season } from './types'
+import { AccountGoneError, type AdminUser, type AiResult, type Api, type Bin, type Disposal, type LeaderRow, type Profile, type Season } from './types'
 
 const ME = 'demo-user'
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -225,6 +225,13 @@ export function createMockApi(): Api {
     },
 
     async getProfile() {
+      // demo: simular falhas (localStorage 'ranktrash:demo-fail' = 'gone' | 'net')
+      const fail = localStorage.getItem('ranktrash:demo-fail')
+      if (fail === 'gone') {
+        localStorage.removeItem('ranktrash:demo-fail')
+        throw new AccountGoneError()
+      }
+      if (fail === 'net') throw new Error('Failed to fetch')
       return profile
     },
     async updateProfile(patch) {

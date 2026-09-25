@@ -1,11 +1,16 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import { api } from './api'
-import type { Profile } from './types'
+import { AccountGoneError, type Profile } from './types'
+
+/** Aviso para a tela de login (ex.: conta removida), lido uma vez. */
+export const LOGIN_NOTICE_KEY = 'ranktrash:login-notice'
 
 interface SessionValue {
   loading: boolean
   email: string | null
   profile: Profile | null
+  /** falha ao carregar o perfil (ex.: sem internet); a tela oferece tentar de novo */
+  profileError: string | null
   refreshProfile: () => Promise<void>
 }
 
@@ -15,12 +20,24 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [email, setEmail] = useState<string | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [profileError, setProfileError] = useState<string | null>(null)
 
   const refreshProfile = useCallback(async () => {
+    setProfileError(null)
     try {
       setProfile(await api.getProfile())
-    } catch {
+    } catch (e) {
       setProfile(null)
+      if (e instanceof AccountGoneError) {
+        try {
+          sessionStorage.setItem(LOGIN_NOTICE_KEY, e.message)
+        } catch {
+          /* sem storage: só sai */
+        }
+        await api.signOut() // volta ao login
+      } else {
+        setProfileError((e as Error).message || 'Não foi possível carregar seu perfil.')
+      }
     }
   }, [])
 
@@ -41,7 +58,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   }, [refreshProfile])
 
-  return <SessionContext.Provider value={{ loading, email, profile, refreshProfile }}>{children}</SessionContext.Provider>
+  return <SessionContext.Provider value={{ loading, email, profile, profileError, refreshProfile }}>{children}</SessionContext.Provider>
 }
 
 export function useSession(): SessionValue {

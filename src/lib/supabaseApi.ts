@@ -1,6 +1,16 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { formatPersonName, looksLikeEmailName } from './names'
-import type { AdminUser, Api, Bin, ClaimResult, Disposal, LeaderRow, Profile, RegisterResult } from './types'
+import {
+  AccountGoneError,
+  type AdminUser,
+  type Api,
+  type Bin,
+  type ClaimResult,
+  type Disposal,
+  type LeaderRow,
+  type Profile,
+  type RegisterResult,
+} from './types'
 
 const DISPOSAL_FIELDS =
   'id, user_id, bin_id, item_label, material, points, status, reason, created_at, ai, breakdown, image_path, source'
@@ -139,13 +149,22 @@ export function createSupabaseApi(url: string, anonKey: string): Api {
       return { kind: 'done', code: shownCode as string }
     },
     async signOut() {
-      await sb.auth.signOut()
+      // local: funciona mesmo se a conta já foi apagada (o logout no servidor falharia)
+      await sb.auth.signOut({ scope: 'local' })
     },
 
     async getProfile() {
       const { data: session } = await sb.auth.getSession()
       const id = await uid()
-      const row = check(await sb.from('profiles').select('*').eq('id', id).single()) as Profile
+      const { data: found, error: profileError } = await sb.from('profiles').select('*').eq('id', id).maybeSingle()
+      if (profileError) throw new Error(profileError.message)
+      if (!found) {
+        // perfil sumiu: confere no Auth se a conta ainda existe
+        const { error: userError } = await sb.auth.getUser()
+        if (!userError || [401, 403, 404].includes(userError.status ?? 0)) throw new AccountGoneError()
+        throw new Error(userError.message)
+      }
+      const row = found as Profile
       const user = session.session?.user
       const email = user?.email ?? ''
       // perfis antigos ficaram com o RA/parte do e-mail como nome: usa o nome da conta Microsoft
