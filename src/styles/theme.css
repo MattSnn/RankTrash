@@ -1109,3 +1109,28 @@ p {
   width: 7px;
   height: 7px;
 }
+.login-trust {
+  margin-top: 16px;
+  padding: 10px 12px;
+  border: 2px dashed var(--grid);
+  color: var(--muted);
+  font-size: 17px;
+  text-align: left;
+}
+.login-trust p {
+  margin: 0 0 6px;
+}
+.login-trust p:last-child {
+  margin: 0;
+}
+.login-trust a,
+.legal a {
+  color: var(--bezel-light);
+}
+.legal ul {
+  padding-left: 20px;
+  margin: 0 0 10px;
+}
+.legal li {
+  margin-bottom: 6px;
+}

@@ -173,6 +173,18 @@ export function createMockApi(): Api {
       profile = { ...profile, email }
       emit()
     },
+    async startExternalLogin() {
+      return `${window.location.origin}/entrar?h=demo`
+    },
+    async claimExternalLogin() {
+      await api.signInWithMicrosoft()
+      return true
+    },
+    cancelExternalLogin() {},
+    async completeExternalLogin() {
+      await delay(400)
+      return 'done'
+    },
     async signOut() {
       email = null
       emit()

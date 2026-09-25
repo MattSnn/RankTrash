@@ -112,6 +112,13 @@ export interface Api {
   onAuthChange(cb: (email: string | null) => void): () => void
   /** Login com a conta Microsoft da faculdade (sai do app e volta logado). */
   signInWithMicrosoft(): Promise<void>
+  /** Login pelo navegador de fora (iPhone): cria o pedido e devolve a URL de /entrar para abrir no Safari. */
+  startExternalLogin(): Promise<string>
+  /** O app resgata a sessão feita no navegador de fora. true = logado. */
+  claimExternalLogin(): Promise<boolean>
+  cancelExternalLogin(): void
+  /** Página /entrar (no navegador de fora): leva à Microsoft e, na volta, entrega a sessão ao app. */
+  completeExternalLogin(handoffId: string): Promise<'redirecting' | 'done'>
   signOut(): Promise<void>
 
   getProfile(): Promise<Profile>

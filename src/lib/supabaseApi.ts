@@ -7,11 +7,47 @@ const DISPOSAL_FIELDS =
 
 type DisposalRow = Disposal & { image_path: string | null }
 
+const HANDOFF_KEY = 'ranktrash:handoff'
+const HANDOFF_PATH = '/entrar'
+const MICROSOFT_LOGIN = {
+  scopes: 'openid email profile',
+  queryParams: { prompt: 'select_account', domain_hint: 'facens.br' },
+}
+
+async function sha256Hex(text: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+function randomSecret(): string {
+  return Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) => b.toString(16).padStart(2, '0')).join('')
+}
+
 export function createSupabaseApi(url: string, anonKey: string): Api {
   const sb: SupabaseClient = createClient(url, anonKey, {
-    // PKCE: a Microsoft devolve ?code= para o app, que troca pela sessão sozinho (detectSessionInUrl)
-    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'pkce' },
+    // PKCE: a Microsoft devolve ?code= para o app, que troca pela sessão sozinho (detectSessionInUrl).
+    // Em /entrar quem troca o código é o cliente da ponte (abaixo), não este.
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: (u) => u.pathname !== HANDOFF_PATH,
+      flowType: 'pkce',
+    },
   })
+
+  /** Cliente da página /entrar: sessão só na aba (sessionStorage) e sem renovar, porque ela é entregue ao app. */
+  function bridgeClient(): SupabaseClient {
+    return createClient(url, anonKey, {
+      auth: {
+        storage: window.sessionStorage,
+        storageKey: 'ranktrash-bridge',
+        persistSession: true,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+        flowType: 'pkce',
+      },
+    })
+  }
 
   async function uid(): Promise<string> {
     const { data } = await sb.auth.getSession()
@@ -47,13 +83,50 @@ export function createSupabaseApi(url: string, anonKey: string): Api {
     async signInWithMicrosoft() {
       const { error } = await sb.auth.signInWithOAuth({
         provider: 'azure',
-        options: {
-          scopes: 'openid email profile',
-          redirectTo: window.location.origin,
-          queryParams: { prompt: 'select_account', domain_hint: 'facens.br' },
-        },
+        options: { ...MICROSOFT_LOGIN, redirectTo: window.location.origin },
       })
       if (error) throw new Error(error.message)
+    },
+    async startExternalLogin() {
+      const secret = randomSecret()
+      const id = check(await sb.rpc('handoff_create', { p_secret_hash: await sha256Hex(secret) })) as string
+      localStorage.setItem(HANDOFF_KEY, JSON.stringify({ id, secret }))
+      return `${window.location.origin}${HANDOFF_PATH}?h=${id}`
+    },
+    async claimExternalLogin() {
+      const raw = localStorage.getItem(HANDOFF_KEY)
+      if (!raw) return false
+      const { id, secret } = JSON.parse(raw) as { id: string; secret: string }
+      const { data: token } = await sb.rpc('handoff_claim', { p_id: id, p_secret: secret })
+      if (!token) return false
+      localStorage.removeItem(HANDOFF_KEY)
+      const { error } = await sb.auth.refreshSession({ refresh_token: token as string })
+      if (error) throw new Error(error.message)
+      return true
+    },
+    cancelExternalLogin() {
+      localStorage.removeItem(HANDOFF_KEY)
+    },
+    async completeExternalLogin(handoffId) {
+      const bridge = bridgeClient()
+      const code = new URLSearchParams(window.location.search).get('code')
+      if (!code) {
+        const { error } = await bridge.auth.signInWithOAuth({
+          provider: 'azure',
+          options: { ...MICROSOFT_LOGIN, redirectTo: `${window.location.origin}${HANDOFF_PATH}?h=${handoffId}` },
+        })
+        if (error) throw new Error(error.message)
+        return 'redirecting'
+      }
+      const { data: exchanged, error: exchangeError } = await bridge.auth.exchangeCodeForSession(code)
+      const session = exchanged.session
+      if (exchangeError || !session) throw new Error(exchangeError?.message ?? 'Não foi possível entrar.')
+      const { data: ok, error } = await bridge.rpc('handoff_complete', { p_id: handoffId, p_refresh_token: session.refresh_token })
+      // a sessão pertence ao app: some daqui sem revogar (signOut revogaria o token entregue)
+      window.sessionStorage.removeItem('ranktrash-bridge')
+      window.history.replaceState(null, '', HANDOFF_PATH)
+      if (error || !ok) throw new Error('O pedido de login expirou. Volte ao app e toque em entrar de novo.')
+      return 'done'
     },
     async signOut() {
       await sb.auth.signOut()

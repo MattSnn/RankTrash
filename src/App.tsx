@@ -3,6 +3,8 @@ import { InstallGate } from './components/InstallPrompt'
 import { Layout, LoadingBar } from './components/Layout'
 import { useSession } from './lib/session'
 import { Admin } from './pages/Admin'
+import { ExternalLogin } from './pages/ExternalLogin'
+import { Legal } from './pages/Legal'
 import { Login } from './pages/Login'
 import { MapPage } from './pages/MapPage'
 import { Onboarding } from './pages/Onboarding'
@@ -12,6 +14,10 @@ import { Register } from './pages/Register'
 import { Rules } from './pages/Rules'
 
 export function App() {
+  // telas públicas, sem login e sem o aviso de instalar (abertas no navegador)
+  const path = window.location.pathname
+  if (path === '/entrar') return <ExternalLogin />
+  if (path === '/privacidade' || path === '/termos') return <Legal />
   return (
     <>
       <InstallGate />
