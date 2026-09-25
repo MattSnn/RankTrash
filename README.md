@@ -73,6 +73,19 @@ tests/          testes (vitest) das regras
    Depois, cadastre as lixeiras reais pela aba **ADMIN**. O melhor jeito é ficar ao lado de cada lixeira e tocar em *USAR MINHA LOCALIZAÇÃO*.
 7. **Deploy:** importe o repositório na Vercel (framework: Vite), configure as mesmas variáveis `VITE_*` e adicione um rewrite de SPA (o `vercel.json` já está no repo).
 
+## Domínio e e-mail (produção)
+
+App: **https://ranktrash.eco.br** (Vercel). `www` redireciona para o domínio principal.
+
+1. **DNS na Cloudflare:** o domínio foi registrado no registro.br. Na Cloudflare, adicione o site e troque os nameservers no registro.br pelos que a Cloudflare indicar.
+2. **Registros da Vercel** (Cloudflare → DNS, proxy **desligado**/nuvem cinza):
+   * `A` `@` → `76.76.21.21`
+   * `CNAME` `www` → `cname.vercel-dns.com`
+3. **Resend:** adicione o domínio `ranktrash.eco.br`, crie na Cloudflare os registros que ele pedir (SPF/DKIM, nuvem cinza), espere ficar *Verified* e gere uma API key.
+4. **Supabase → Authentication → Emails → SMTP:** host `smtp.resend.com`, porta `465`, usuário `resend`, senha = API key do Resend, remetente `login@ranktrash.eco.br` (nome `RankTrash`). Em *Rate Limits*, suba o limite de e-mails por hora.
+5. **Modelos Magic Link e Confirm signup:** assunto `Seu código RankTrash: {{ .Token }}`, corpo = [`supabase/templates/login-code.html`](supabase/templates/login-code.html).
+6. **URL Configuration:** Site URL `https://ranktrash.eco.br`. Em Redirect URLs, deixe `https://ranktrash.eco.br/**` e `https://ranktrash.vercel.app/**`.
+
 ## Scripts
 
 | Comando | O que faz |

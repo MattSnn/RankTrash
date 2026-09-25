@@ -155,7 +155,8 @@ Hospedagem do PWA: Vercel (ou qualquer host estático)
 | Supabase (plano Free) | R$ 0 |
 | Vercel (plano Hobby) | R$ 0 |
 | Google Gemini API (camada gratuita) | R$ 0 |
-| Domínio próprio (opcional) | ~R$ 40/ano |
+| Domínio `ranktrash.eco.br` (registro.br) | ~R$ 40/ano |
+| Envio de e-mail (Resend, até 3.000/mês) | R$ 0 |
 | Adesivos/placas para as lixeiras | ~R$ 50 |
 | Prêmios mensais (top 3) | a definir (patrocínio?) |
 
