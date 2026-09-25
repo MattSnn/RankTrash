@@ -21,7 +21,8 @@ function useCamera(active: boolean) {
   const [attempt, setAttempt] = useState(0)
   const trackRef = useRef<MediaStreamTrack | null>(null)
   const [torchSupported, setTorchSupported] = useState(false)
-  const [torchOn, setTorchOn] = useState(false)
+  // modo flash: a luz só acende no instante da foto (como o flash do celular), não fica ligada
+  const [flashOn, setFlashOn] = useState(false)
 
   useEffect(() => {
     if (!active) return
@@ -29,7 +30,6 @@ function useCamera(active: boolean) {
     let cancelled = false
     setReady(false)
     setError(null)
-    setTorchOn(false)
     openRearCamera()
       .then((s) => {
         if (cancelled) return s.getTracks().forEach((t) => t.stop())
@@ -58,19 +58,37 @@ function useCamera(active: boolean) {
     }
   }, [active, attempt])
 
-  async function toggleTorch() {
-    const track = trackRef.current
-    if (!track) return
-    const next = !torchOn
+  async function setTorch(on: boolean) {
+    await trackRef.current?.applyConstraints({ advanced: [{ torch: on } as MediaTrackConstraintSet] })
+  }
+
+  /** Com o modo flash ligado: acende, espera a câmera ajustar a exposição, captura e apaga. */
+  async function withFlash<T>(capture: () => Promise<T>): Promise<T> {
+    if (!flashOn || !torchSupported || !trackRef.current) return capture()
     try {
-      await track.applyConstraints({ advanced: [{ torch: next } as MediaTrackConstraintSet] })
-      setTorchOn(next)
+      await setTorch(true)
+      await new Promise((r) => setTimeout(r, 450))
     } catch {
       setTorchSupported(false)
+      return capture()
+    }
+    try {
+      return await capture()
+    } finally {
+      await setTorch(false).catch(() => undefined)
     }
   }
 
-  return { videoRef, error, ready, retry: () => setAttempt((a) => a + 1), torchSupported, torchOn, toggleTorch }
+  return {
+    videoRef,
+    error,
+    ready,
+    retry: () => setAttempt((a) => a + 1),
+    torchSupported,
+    flashOn,
+    toggleFlash: () => setFlashOn((f) => !f),
+    withFlash,
+  }
 }
 
 export function Register() {
@@ -102,11 +120,13 @@ export function Register() {
   const shoot = useCallback(async () => {
     const video = camera.videoRef.current
     if (!video) return
-    play('shutter')
-    const blob = await captureFrame(video)
+    const blob = await camera.withFlash(() => {
+      play('shutter')
+      return captureFrame(video)
+    })
     setPhoto({ blob, url: URL.createObjectURL(blob), source: 'camera' })
     setStep('preview')
-  }, [camera.videoRef])
+  }, [camera])
 
   async function pickFromGallery(file: File | undefined) {
     if (!file) return
@@ -227,12 +247,12 @@ export function Register() {
             </button>
             {camera.torchSupported ? (
               <button
-                className={`btn btn--sm flash-btn ${camera.torchOn ? 'flash-btn--on' : ''}`}
-                onClick={() => void camera.toggleTorch()}
-                aria-pressed={camera.torchOn}
-                aria-label={camera.torchOn ? 'Desligar flash' : 'Ligar flash'}
+                className={`btn btn--sm flash-btn ${camera.flashOn ? 'flash-btn--on' : ''}`}
+                onClick={camera.toggleFlash}
+                aria-pressed={camera.flashOn}
+                aria-label={camera.flashOn ? 'Desligar flash' : 'Ligar flash'}
               >
-                <Icon name="flash" size={16} /> {camera.torchOn ? 'ON' : 'OFF'}
+                <Icon name="flash" size={16} /> {camera.flashOn ? 'ON' : 'OFF'}
               </button>
             ) : (
               <span />
