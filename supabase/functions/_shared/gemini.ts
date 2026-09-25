@@ -79,6 +79,8 @@ export function buildGeminiRequest(imageBase64: string, mimeType: string, model?
       temperature: 0.1,
       responseMimeType: 'application/json',
       responseSchema: GEMINI_RESPONSE_SCHEMA,
+      // 256 tokens por imagem em vez de ~1100: bem mais rápido e basta para reconhecer o item
+      mediaResolution: 'MEDIA_RESOLUTION_LOW',
       ...(model ? { thinkingConfig: thinkingConfigFor(model) } : {}),
     },
   }
@@ -111,13 +113,16 @@ export function parseGeminiResponse(body: unknown): AiResult {
 /** Modelos reserva, usados quando o principal demora, está sobrecarregado ou indisponível. */
 export const FALLBACK_GEMINI_MODELS = ['gemini-3.1-flash-lite', 'gemini-2.5-flash-lite']
 const RETRYABLE = new Set([404, 408, 429, 500, 502, 503, 504])
-/** Se o modelo atual não respondeu em HEDGE_MS, dispara o próximo em paralelo e usa quem responder primeiro. */
-export const GEMINI_HEDGE_MS = 5_000
+/**
+ * Se ninguém respondeu em HEDGE_MS, dispara o próximo da fila em paralelo e usa quem responder primeiro.
+ * A latência do plano gratuito varia muito (a mesma chamada leva 3 s ou 12 s), então vale insistir cedo.
+ */
+export const GEMINI_HEDGE_MS = 2_500
 /** Tempo máximo de cada chamada ao Gemini. */
 export const GEMINI_ATTEMPT_TIMEOUT_MS = 20_000
 /** Tempo total para classificar (a Edge Function e o app não podem ficar esperando indefinidamente). */
 export const GEMINI_TOTAL_BUDGET_MS = 45_000
-const MAX_PARALLEL = 2
+const MAX_PARALLEL = 3
 
 export interface ClassifyOptions {
   signal?: AbortSignal
@@ -129,8 +134,8 @@ class FatalGeminiError extends Error {}
 
 /**
  * Classifica a foto. Começa pelo modelo principal; se ele falhar, passa ao próximo na hora,
- * e se ele só estiver lento, dispara o próximo em paralelo (no máximo 2 ao mesmo tempo).
- * Fila: principal → reservas → principal de novo (para o caso de 503 passageiro).
+ * e se ele só estiver lento, dispara o próximo em paralelo (no máximo 3 ao mesmo tempo).
+ * Fila: principal → 1º reserva → principal de novo → demais reservas.
  */
 export function classifyImage(
   apiKey: string,
@@ -143,7 +148,8 @@ export function classifyImage(
   const budget = AbortSignal.timeout(opts.budgetMs ?? GEMINI_TOTAL_BUDGET_MS)
   const outer = opts.signal ? AbortSignal.any([budget, opts.signal]) : budget
   // cada item: modelo + se manda a configuração de raciocínio mínimo
-  const queue = [model, ...FALLBACK_GEMINI_MODELS.filter((x) => x !== model), model].map((m) => ({ m, thinking: true }))
+  const [first, ...rest] = FALLBACK_GEMINI_MODELS.filter((x) => x !== model)
+  const queue = [model, first, model, ...rest].filter(Boolean).map((m) => ({ m, thinking: true }))
   const controllers: AbortController[] = []
 
   return new Promise<AiResult>((resolve, reject) => {
