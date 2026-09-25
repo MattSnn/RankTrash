@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { formatPersonName, looksLikeEmailName } from './names'
-import type { Api, Bin, Disposal, LeaderRow, Profile, RegisterResult } from './types'
+import type { Api, Bin, ClaimResult, Disposal, LeaderRow, Profile, RegisterResult } from './types'
 
 const DISPOSAL_FIELDS =
   'id, user_id, bin_id, item_label, material, points, status, reason, created_at, ai, breakdown, image_path, source'
@@ -93,16 +93,23 @@ export function createSupabaseApi(url: string, anonKey: string): Api {
       localStorage.setItem(HANDOFF_KEY, JSON.stringify({ id, secret }))
       return `${window.location.origin}${HANDOFF_PATH}?h=${id}`
     },
-    async claimExternalLogin() {
+    async claimExternalLogin(code) {
       const raw = localStorage.getItem(HANDOFF_KEY)
-      if (!raw) return false
+      if (!raw) return 'expired'
       const { id, secret } = JSON.parse(raw) as { id: string; secret: string }
-      const { data: token } = await sb.rpc('handoff_claim', { p_id: id, p_secret: secret })
-      if (!token) return false
+      const res = check(await sb.rpc('handoff_claim', { p_id: id, p_secret: secret, p_code: code })) as {
+        status: ClaimResult
+        token?: string
+      }
+      if (res.status === 'expired') localStorage.removeItem(HANDOFF_KEY)
+      if (res.status !== 'ok' || !res.token) return res.status
       localStorage.removeItem(HANDOFF_KEY)
-      const { error } = await sb.auth.refreshSession({ refresh_token: token as string })
+      const { error } = await sb.auth.refreshSession({ refresh_token: res.token })
       if (error) throw new Error(error.message)
-      return true
+      return 'ok'
+    },
+    hasPendingExternalLogin() {
+      return localStorage.getItem(HANDOFF_KEY) != null
     },
     cancelExternalLogin() {
       localStorage.removeItem(HANDOFF_KEY)
@@ -116,17 +123,20 @@ export function createSupabaseApi(url: string, anonKey: string): Api {
           options: { ...MICROSOFT_LOGIN, redirectTo: `${window.location.origin}${HANDOFF_PATH}?h=${handoffId}` },
         })
         if (error) throw new Error(error.message)
-        return 'redirecting'
+        return { kind: 'redirecting' }
       }
       const { data: exchanged, error: exchangeError } = await bridge.auth.exchangeCodeForSession(code)
       const session = exchanged.session
       if (exchangeError || !session) throw new Error(exchangeError?.message ?? 'Não foi possível entrar.')
-      const { data: ok, error } = await bridge.rpc('handoff_complete', { p_id: handoffId, p_refresh_token: session.refresh_token })
+      const { data: shownCode, error } = await bridge.rpc('handoff_complete', {
+        p_id: handoffId,
+        p_refresh_token: session.refresh_token,
+      })
       // a sessão pertence ao app: some daqui sem revogar (signOut revogaria o token entregue)
       window.sessionStorage.removeItem('ranktrash-bridge')
       window.history.replaceState(null, '', HANDOFF_PATH)
-      if (error || !ok) throw new Error('O pedido de login expirou. Volte ao app e toque em entrar de novo.')
-      return 'done'
+      if (error || !shownCode) throw new Error('O pedido de login expirou. Volte ao app e toque em entrar de novo.')
+      return { kind: 'done', code: shownCode as string }
     },
     async signOut() {
       await sb.auth.signOut()
@@ -144,7 +154,7 @@ export function createSupabaseApi(url: string, anonKey: string): Api {
         const { error } = await sb.from('profiles').update({ display_name: realName }).eq('id', id)
         if (!error) row.display_name = realName
       }
-      return { ...row, email }
+      return { ...row, email, full_name: user?.user_metadata?.full_name ?? user?.user_metadata?.name }
     },
     async updateProfile(patch) {
       const id = await uid()

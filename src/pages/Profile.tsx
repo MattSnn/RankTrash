@@ -4,8 +4,60 @@ import { levelFromXp, xpForLevel } from '../../supabase/functions/_shared/scorin
 import { Mascot } from '../components/Mascot'
 import { Icon, type IconName } from '../components/PixelArt'
 import { api } from '../lib/api'
+import { nameSuggestions } from '../lib/names'
 import { useSession } from '../lib/session'
 import type { Bin, Disposal, LeaderRow, Material } from '../lib/types'
+
+/** Editar o nome de exibição (aparece no ranking), com sugestões a partir do nome da conta Microsoft. */
+function NameEditor({ current, fullName, onDone }: { current: string; fullName?: string; onDone: () => void }) {
+  const { refreshProfile } = useSession()
+  const [name, setName] = useState(current)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const suggestions = nameSuggestions(fullName)
+
+  async function save() {
+    const value = name.trim().slice(0, 40)
+    if (value.length < 2) {
+      setError('Digite um nome com pelo menos 2 letras.')
+      return
+    }
+    setBusy(true)
+    try {
+      await api.updateProfile({ display_name: value })
+      await refreshProfile()
+      onDone()
+    } catch (e) {
+      setError((e as Error).message)
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="card">
+      <h2>NOME NO RANKING</h2>
+      {suggestions.length > 0 && (
+        <div className="chips" style={{ marginBottom: 10 }}>
+          {suggestions.map((s) => (
+            <button key={s} className={`chip ${s === name ? 'active' : ''}`} onClick={() => setName(s)}>
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+      <input className="input" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} aria-label="Nome" />
+      {error && <p className="error-text">{error}</p>}
+      <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+        <button className="btn btn--green" style={{ flex: 1 }} disabled={busy} onClick={() => void save()}>
+          {busy ? 'SALVANDO...' : 'SALVAR'}
+        </button>
+        <button className="btn btn--ghost" style={{ flex: 1 }} onClick={onDone}>
+          CANCELAR
+        </button>
+      </div>
+    </div>
+  )
+}
 
 interface Badge {
   icon: IconName
@@ -35,6 +87,7 @@ const STATUS_LABEL = { approved: 'OK', pending: 'REVISÃO', rejected: 'NEGADO' }
 
 export function Profile() {
   const { profile } = useSession()
+  const [editingName, setEditingName] = useState(false)
   const [disposals, setDisposals] = useState<Disposal[]>([])
   const [bins, setBins] = useState<Bin[]>([])
   const [me, setMe] = useState<LeaderRow | null>(null)
@@ -67,6 +120,11 @@ export function Profile() {
           <Mascot size={72} mood="happy" />
           <div style={{ flex: 1, minWidth: 0 }}>
             <h1 style={{ marginBottom: 4 }}>{profile.display_name}</h1>
+            {!editingName && (
+              <button className="btn btn--ghost btn--sm" style={{ marginBottom: 6 }} onClick={() => setEditingName(true)}>
+                EDITAR NOME
+              </button>
+            )}
             <div className="muted">{profile.course}</div>
             <div className="title-font" style={{ fontSize: 9, marginTop: 8 }}>
               NÍVEL {level}
@@ -80,6 +138,10 @@ export function Profile() {
           </div>
         </div>
       </div>
+
+      {editingName && (
+        <NameEditor current={profile.display_name} fullName={profile.full_name} onDone={() => setEditingName(false)} />
+      )}
 
       <div className="stats" style={{ marginBottom: 14 }}>
         <div className="stat">

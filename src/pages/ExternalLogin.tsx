@@ -5,7 +5,7 @@ import { api } from '../lib/api'
 import { play } from '../lib/sfx'
 import { loginErrorMessage } from './Login'
 
-type State = { kind: 'working' } | { kind: 'done' } | { kind: 'error'; message: string }
+type State = { kind: 'working' } | { kind: 'done'; code: string } | { kind: 'error'; message: string }
 
 /** /entrar?h=<pedido>: aberta no Safari pelo app instalado. Leva à Microsoft e entrega a sessão ao app. */
 export function ExternalLogin() {
@@ -29,8 +29,8 @@ export function ExternalLogin() {
     api
       .completeExternalLogin(handoff)
       .then((r) => {
-        if (r === 'done') {
-          setState({ kind: 'done' })
+        if (r.kind === 'done') {
+          setState(r)
           play('success')
         }
       })
@@ -51,9 +51,14 @@ export function ExternalLogin() {
           <>
             <h1>PRONTO!</h1>
             <p className="title-font" style={{ fontSize: 10, lineHeight: 1.8 }}>
-              AGORA VOLTE PARA O APP RANKTRASH.
+              VOLTE PARA O APP RANKTRASH E DIGITE O CÓDIGO:
             </p>
-            <p className="muted">Pode fechar esta aba. O app já vai estar logado.</p>
+            <p className="handoff-code" aria-label={`Código ${state.code.split('').join(' ')}`}>
+              {state.code}
+            </p>
+            <p className="muted">
+              Vale por 10 minutos. Não passe este código para ninguém: ele entra na sua conta.
+            </p>
           </>
         )}
         {state.kind === 'error' && (

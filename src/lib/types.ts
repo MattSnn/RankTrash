@@ -17,6 +17,8 @@ export interface Profile {
   streak: number
   last_disposal_date: string | null
   consent_at: string | null
+  /** nome completo da conta Microsoft (para sugerir o nome de exibição) */
+  full_name?: string
 }
 
 export interface Bin {
@@ -106,6 +108,8 @@ export type RegisterResult =
 
 export type LeaderScope = 'season' | 'week'
 
+export type ClaimResult = 'ok' | 'wrong' | 'pending' | 'expired'
+
 export interface Api {
   demo: boolean
   getSessionEmail(): Promise<string | null>
@@ -114,11 +118,12 @@ export interface Api {
   signInWithMicrosoft(): Promise<void>
   /** Login pelo navegador de fora (iPhone): cria o pedido e devolve a URL de /entrar para abrir no Safari. */
   startExternalLogin(): Promise<string>
-  /** O app resgata a sessão feita no navegador de fora. true = logado. */
-  claimExternalLogin(): Promise<boolean>
+  /** O app resgata, com o código mostrado no Safari, a sessão feita lá. */
+  claimExternalLogin(code: string): Promise<ClaimResult>
+  hasPendingExternalLogin(): boolean
   cancelExternalLogin(): void
-  /** Página /entrar (no navegador de fora): leva à Microsoft e, na volta, entrega a sessão ao app. */
-  completeExternalLogin(handoffId: string): Promise<'redirecting' | 'done'>
+  /** Página /entrar (no navegador de fora): leva à Microsoft e, na volta, entrega a sessão ao app e mostra o código. */
+  completeExternalLogin(handoffId: string): Promise<{ kind: 'redirecting' } | { kind: 'done'; code: string }>
   signOut(): Promise<void>
 
   getProfile(): Promise<Profile>

@@ -51,6 +51,7 @@ let profile: Profile = {
   id: ME,
   email: 'voce@facens.br',
   display_name: 'Você',
+  full_name: 'VOCÊ DA SILVA SANTOS',
   course: 'Engenharia da Computação',
   role: 'admin',
   xp: 132,
@@ -176,14 +177,18 @@ export function createMockApi(): Api {
     async startExternalLogin() {
       return `${window.location.origin}/entrar?h=demo`
     },
-    async claimExternalLogin() {
+    async claimExternalLogin(code) {
+      if (code !== '0000') return 'wrong'
       await api.signInWithMicrosoft()
-      return true
+      return 'ok'
+    },
+    hasPendingExternalLogin() {
+      return false
     },
     cancelExternalLogin() {},
     async completeExternalLogin() {
       await delay(400)
-      return 'done'
+      return { kind: 'done', code: '0000' }
     },
     async signOut() {
       email = null

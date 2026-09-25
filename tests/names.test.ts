@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatPersonName, looksLikeEmailName } from '../src/lib/names'
+import { formatPersonName, looksLikeEmailName, nameSuggestions } from '../src/lib/names'
 
 describe('formatPersonName', () => {
   it('usa primeiro e último nome com maiúsculas certas', () => {
@@ -28,5 +28,19 @@ describe('looksLikeEmailName', () => {
     expect(looksLikeEmailName('234925', '234925@facens.br')).toBe(true)
     expect(looksLikeEmailName('mateus.sonnenberg', 'mateus.sonnenberg@facens.br')).toBe(true)
     expect(looksLikeEmailName('Mateus S.', '234925@facens.br')).toBe(false)
+  })
+})
+
+describe('nameSuggestions', () => {
+  it('sugere primeiro + cada sobrenome e o nome completo', () => {
+    expect(nameSuggestions('MATEUS SONNENBERG AMARAL')).toEqual([
+      'Mateus Amaral',
+      'Mateus Sonnenberg',
+      'Mateus Sonnenberg Amaral',
+    ])
+  })
+  it('sem repetir e vazio sem nome', () => {
+    expect(nameSuggestions('Maria Silva')).toEqual(['Maria Silva'])
+    expect(nameSuggestions('')).toEqual([])
   })
 })

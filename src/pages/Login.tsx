@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { InstallBanner } from '../components/InstallPrompt'
 import { Mascot } from '../components/Mascot'
 import { PublicShell } from '../components/PublicShell'
@@ -49,7 +49,9 @@ function openInSafari(url: string) {
 
 export function Login() {
   const [busy, setBusy] = useState(false)
-  const [waiting, setWaiting] = useState(false)
+  // esperando o código do Safari (também ao reabrir o app com um pedido pendente)
+  const [waiting, setWaiting] = useState(() => USE_SAFARI && api.hasPendingExternalLogin())
+  const [code, setCode] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -60,29 +62,6 @@ export function Login() {
     }
   }, [])
 
-  const claim = useCallback(async () => {
-    try {
-      if (await api.claimExternalLogin()) play('success') // a sessão muda e o app sai desta tela
-    } catch (err) {
-      setWaiting(false)
-      setError((err as Error).message)
-    }
-  }, [])
-
-  // esperando o login no Safari: confere ao voltar para o app e, enquanto isso, a cada 2,5 s
-  useEffect(() => {
-    if (!USE_SAFARI) return
-    void claim() // pedido de antes (ex.: o app foi fechado enquanto o aluno entrava no Safari)
-    if (!waiting) return
-    const t = setInterval(() => void claim(), 2500)
-    const onVisible = () => document.visibilityState === 'visible' && void claim()
-    document.addEventListener('visibilitychange', onVisible)
-    return () => {
-      clearInterval(t)
-      document.removeEventListener('visibilitychange', onVisible)
-    }
-  }, [waiting, claim])
-
   async function signIn() {
     setError(null)
     setBusy(true)
@@ -90,6 +69,7 @@ export function Login() {
     try {
       if (USE_SAFARI) {
         openInSafari(await api.startExternalLogin())
+        setCode('')
         setWaiting(true)
         setBusy(false)
       } else {
@@ -101,9 +81,34 @@ export function Login() {
     }
   }
 
+  async function confirm(e: FormEvent) {
+    e.preventDefault()
+    setError(null)
+    setBusy(true)
+    try {
+      const result = await api.claimExternalLogin(code.trim())
+      if (result === 'ok') {
+        play('success') // a sessão muda e o app sai desta tela
+        return
+      }
+      play('fail')
+      if (result === 'wrong') setError('Código errado. Confira o que aparece no Safari.')
+      if (result === 'pending') setError('Termine de entrar no Safari primeiro. O código aparece lá no fim.')
+      if (result === 'expired') {
+        setWaiting(false)
+        setError('O pedido expirou. Toque em entrar de novo.')
+      }
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   function cancel() {
     api.cancelExternalLogin()
     setWaiting(false)
+    setError(null)
   }
 
   return (
@@ -115,16 +120,26 @@ export function Login() {
           {waiting ? (
             <>
               <p className="title-font" style={{ fontSize: 9, lineHeight: 1.8 }}>
-                CONTINUE NO SAFARI.
-                <br />
-                DEPOIS É SÓ VOLTAR PARA CÁ.
+                ENTRE PELO SAFARI E DIGITE AQUI
+                <br />O CÓDIGO QUE APARECER LÁ.
               </p>
-              <div className="loading-bar" style={{ margin: '16px auto' }}>
-                {Array.from({ length: 6 }, (_, i) => (
-                  <i key={i} />
-                ))}
-              </div>
-              <button className="btn btn--orange btn--block" onClick={() => void signIn()}>
+              <form onSubmit={(e) => void confirm(e)} style={{ width: '100%' }}>
+                <input
+                  className="input handoff-input"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  pattern="[0-9]*"
+                  maxLength={4}
+                  placeholder="0000"
+                  aria-label="Código de 4 dígitos"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                />
+                <button className="btn btn--green btn--block" disabled={busy || code.length !== 4}>
+                  {busy ? 'CONFERINDO...' : 'ENTRAR'}
+                </button>
+              </form>
+              <button className="btn btn--ghost btn--block" style={{ marginTop: 14 }} onClick={() => void signIn()}>
                 ABRIR O SAFARI DE NOVO
               </button>
               <button className="btn btn--ghost btn--block" style={{ marginTop: 12 }} onClick={cancel}>
