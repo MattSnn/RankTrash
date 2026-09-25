@@ -23,7 +23,7 @@ Abra http://localhost:5173. No modo demo tudo é simulado: dados, IA (sorteia um
 | App | React 19 + Vite + TypeScript + `vite-plugin-pwa` |
 | Mapa | Leaflet + tiles escuros do CARTO |
 | Backend | Supabase (Auth por código de e-mail, Postgres com RLS, Storage, Edge Functions) |
-| IA | Google Gemini (`gemini-2.5-flash` por padrão, configurável) |
+| IA | Google Gemini (`gemini-3.5-flash-lite` por padrão, 3.1 Flash Lite como reserva; configurável) |
 | Deploy | Vercel (site estático) |
 
 ## Estrutura
@@ -61,7 +61,7 @@ tests/          testes (vitest) das regras
 4. **Gemini:** gere uma chave em https://aistudio.google.com/apikey e configure a função:
    ```bash
    npx supabase secrets set GEMINI_API_KEY=sua-chave
-   # opcional: npx supabase secrets set GEMINI_MODEL=gemini-2.5-flash
+   # opcional: npx supabase secrets set GEMINI_MODEL=gemini-3.5-flash-lite
    npx supabase functions deploy register-disposal
    ```
 5. **App:** copie `.env.example` para `.env.local` e preencha `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`.

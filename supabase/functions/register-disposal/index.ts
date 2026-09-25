@@ -1,6 +1,6 @@
 // Edge Function: registra um descarte (foto + GPS), valida, classifica com o Gemini e dá pontos.
 // Deploy: supabase functions deploy register-disposal
-// Secrets: supabase secrets set GEMINI_API_KEY=... [GEMINI_MODEL=gemini-2.5-flash]
+// Secrets: supabase secrets set GEMINI_API_KEY=... [GEMINI_MODEL=gemini-3.5-flash-lite]
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import jpeg from 'npm:jpeg-js@0.4.4'
 import { encodeBase64 } from 'jsr:@std/encoding@1/base64'

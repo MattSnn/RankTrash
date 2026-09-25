@@ -139,7 +139,7 @@ describe('classifyImage (retry e modelo reserva)', () => {
     try {
       const r = await classifyImage('k', 'b64', 'image/jpeg')
       expect(r.item_label).toBe('Lata')
-      expect(calls).toEqual(['gemini-2.5-flash', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'])
+      expect(calls).toEqual(['gemini-3.5-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.5-flash-lite-preview'])
     } finally {
       globalThis.fetch = realFetch
     }
@@ -167,6 +167,7 @@ describe('classifyImage (tempo limite)', () => {
     globalThis.fetch = ((url: string, init: RequestInit) => {
       const m = url.split('/models/')[1].split(':')[0]
       calls.push(m)
+      if (m === 'gemini-3.5-flash-lite-preview') return Promise.resolve(new Response('not found', { status: 404 }))
       if (m === 'gemini-2.5-flash') {
         // nunca responde: só termina quando o AbortSignal dispara
         return new Promise((_, reject) => init.signal!.addEventListener('abort', () => reject(new DOMException('timeout', 'TimeoutError'))))
@@ -177,7 +178,8 @@ describe('classifyImage (tempo limite)', () => {
       const started = Date.now()
       const r = await classifyImage('k', 'b64', 'image/jpeg', 'gemini-2.5-flash', 12000)
       expect(r.item_label).toBe('Copo')
-      expect(calls[calls.length - 1]).toBe('gemini-2.5-flash-lite')
+      // travado -> pulado; reserva inexistente (404) -> pulado; responde o próximo
+      expect(calls).toEqual(['gemini-2.5-flash', 'gemini-3.5-flash-lite-preview', 'gemini-3.1-flash-lite'])
       expect(Date.now() - started).toBeLessThan(12500)
     } finally {
       globalThis.fetch = realFetch

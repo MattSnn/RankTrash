@@ -14,7 +14,8 @@ export interface AiResult {
   tip: string
 }
 
-export const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash'
+// Flash Lite: maior cota gratuita (500 requisições/dia, 15/min por modelo)
+export const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash-lite'
 
 export const GEMINI_PROMPT = `Você é o classificador de resíduos do app RankTrash, da campanha Lixo Zero de uma universidade.
 Analise a foto tirada por um aluno que vai descartar um resíduo e responda SOMENTE no JSON pedido.
@@ -98,7 +99,13 @@ export function parseGeminiResponse(body: unknown): AiResult {
 }
 
 /** Modelos reserva, usados quando o principal está sobrecarregado ou indisponível. */
-export const FALLBACK_GEMINI_MODELS = ['gemini-2.5-flash-lite', 'gemini-2.0-flash']
+// o nome pode ter sufixo "-preview"; nomes inexistentes (404) são pulados na hora
+export const FALLBACK_GEMINI_MODELS = [
+  'gemini-3.5-flash-lite-preview',
+  'gemini-3.1-flash-lite',
+  'gemini-3.1-flash-lite-preview',
+  'gemini-2.5-flash-lite',
+]
 const RETRYABLE = new Set([408, 429, 500, 502, 503, 504])
 /** Tempo máximo de cada chamada ao Gemini. */
 export const GEMINI_ATTEMPT_TIMEOUT_MS = 20_000
@@ -132,7 +139,10 @@ export async function classifyImage(
         // deixa tempo para os modelos reserva se este travar
         signal: AbortSignal.timeout(Math.min(GEMINI_ATTEMPT_TIMEOUT_MS, Math.round(remaining * 0.6))),
       })
-      if (res.ok) return parseGeminiResponse(await res.json())
+      if (res.ok) {
+        console.log(`Gemini ok: ${m}`)
+        return parseGeminiResponse(await res.json())
+      }
       const err = new Error(`Gemini ${m} ${res.status}: ${(await res.text()).slice(0, 300)}`)
       if (res.status === 404) skip.add(m) // modelo não existe: pula
       else if (!RETRYABLE.has(res.status)) throw new FatalGeminiError(err.message) // chave inválida etc.
@@ -143,7 +153,7 @@ export async function classifyImage(
       skip.add(m) // travou ou caiu: não insiste no mesmo modelo
     }
     console.warn(lastError.message)
-    if (i === 0) await new Promise((r) => setTimeout(r, 800))
+    if (i === 0 && !skip.has(m)) await new Promise((r) => setTimeout(r, 800))
   }
   throw lastError
 }
