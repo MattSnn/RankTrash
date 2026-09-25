@@ -1,0 +1,34 @@
+import { Navigate, Route, Routes } from 'react-router-dom'
+import { Layout, LoadingBar } from './components/Layout'
+import { useSession } from './lib/session'
+import { Admin } from './pages/Admin'
+import { Login } from './pages/Login'
+import { MapPage } from './pages/MapPage'
+import { Onboarding } from './pages/Onboarding'
+import { Profile } from './pages/Profile'
+import { Ranking } from './pages/Ranking'
+import { Register } from './pages/Register'
+import { Rules } from './pages/Rules'
+
+export function App() {
+  const { loading, email, profile } = useSession()
+
+  if (loading) return <LoadingBar label="INICIANDO TRACKER" />
+  if (!email) return <Login />
+  if (!profile) return <LoadingBar label="CARREGANDO PERFIL" />
+  if (!profile.consent_at) return <Onboarding />
+
+  return (
+    <Layout>
+      <Routes>
+        <Route path="/" element={<MapPage />} />
+        <Route path="/registrar" element={<Register />} />
+        <Route path="/ranking" element={<Ranking />} />
+        <Route path="/perfil" element={<Profile />} />
+        <Route path="/sobre" element={<Rules />} />
+        <Route path="/admin" element={profile.role === 'admin' ? <Admin /> : <Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Layout>
+  )
+}
