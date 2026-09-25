@@ -38,10 +38,9 @@ body,
 
 body {
   margin: 0;
+  /* topo liso: no iPhone a barra de status fica por cima e o iOS desfoca essa faixa */
   background: var(--page);
-  background-image:
-    radial-gradient(circle at 50% -20%, #2d56c9 0%, transparent 60%),
-    linear-gradient(180deg, var(--page) 0%, var(--page-deep) 100%);
+  background-image: linear-gradient(180deg, var(--page) 0%, var(--page) 30%, var(--page-deep) 100%);
   color: var(--text);
   font-family: var(--font-body);
   font-size: 20px;
@@ -101,7 +100,7 @@ p {
   flex-direction: column;
   max-width: 560px;
   margin: 0 auto;
-  padding: max(10px, env(safe-area-inset-top)) 10px 0;
+  padding: calc(env(safe-area-inset-top, 0px) + 10px) 10px 0;
 }
 
 .topbar {
@@ -214,22 +213,14 @@ p {
   align-items: center;
   white-space: nowrap;
 }
-.ticker__track {
+.ticker__item {
   display: inline-block;
-  padding-left: 100%;
-  animation: ticker 38s linear infinite;
   font-family: var(--font-title);
   font-size: 11px;
   color: var(--cream);
   text-transform: uppercase;
-}
-.ticker__item::after {
-  content: ' ■ ';
-  color: var(--green);
-  margin: 0 12px;
-}
-@keyframes ticker {
-  to { transform: translateX(-100%); }
+  will-change: transform;
+  transform: translateX(100vw);
 }
 
 /* ---------- Navegação inferior ---------- */
@@ -984,15 +975,15 @@ p {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ticker__track,
   .radar__sweep,
   .scanline,
   .me-dot,
   .loading-bar i {
     animation: none;
   }
-  .ticker__track {
-    padding-left: 0;
+  .ticker__item {
+    transform: none;
+    padding-left: 8px;
   }
 }
 

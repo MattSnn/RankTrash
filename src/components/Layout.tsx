@@ -1,9 +1,8 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 import { api } from '../lib/api'
 import { play, setSoundEnabled, soundEnabled } from '../lib/sfx'
 import { useSession } from '../lib/session'
-import type { FeedItem } from '../lib/types'
 import { InstallBanner } from './InstallPrompt'
 import { MascotEyes } from './Mascot'
 import { Icon } from './PixelArt'
@@ -23,14 +22,27 @@ export function LoadingBar({ label = 'CARREGANDO' }: { label?: string }) {
   )
 }
 
+const TICKER_SPEED = 60 // px/s, igual para qualquer tamanho de texto
+const TICKER_FALLBACK = ['Bem-vindo ao RankTrash', 'Descarte certo, ganhe pontos', 'Facens Lixo Zero']
+
+/** Letreiro: uma mensagem por vez, atravessando a caixa inteira. O feed novo só entra entre mensagens. */
 function Ticker() {
-  const [items, setItems] = useState<FeedItem[]>([])
+  const box = useRef<HTMLDivElement>(null)
+  const text = useRef<HTMLSpanElement>(null)
+  const messages = useRef<string[]>(TICKER_FALLBACK)
+  const [turn, setTurn] = useState(0) // conta as passagens (reinicia a animação mesmo com 1 mensagem)
+
   useEffect(() => {
     let active = true
     const load = () =>
       api
         .feed()
-        .then((f) => active && setItems(f))
+        .then((f) => {
+          if (!active || !f.length) return
+          messages.current = f.map(
+            (i) => `${i.display_name} descartou ${i.item_label}${i.bin_name ? ` em ${i.bin_name}` : ''} +${i.points} pts`,
+          )
+        })
         .catch(() => undefined)
     void load()
     const t = setInterval(load, 30000)
@@ -40,19 +52,34 @@ function Ticker() {
     }
   }, [])
 
-  const messages = items.length
-    ? items.map((f) => `${f.display_name} descartou ${f.item_label}${f.bin_name ? ` em ${f.bin_name}` : ''} +${f.points} pts`)
-    : ['Bem-vindo ao RankTrash', 'Descarte certo, ganhe pontos', 'Facens Lixo Zero']
+  const list = messages.current
+  const message = list[turn % list.length]
+
+  useEffect(() => {
+    const el = text.current
+    const wrap = box.current
+    if (!el || !wrap) return
+    const next = () => setTurn((t) => t + 1)
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const t = setTimeout(next, 5000)
+      return () => clearTimeout(t)
+    }
+    const from = wrap.clientWidth
+    const to = -el.offsetWidth
+    const anim = el.animate([{ transform: `translateX(${from}px)` }, { transform: `translateX(${to}px)` }], {
+      duration: ((from - to) / TICKER_SPEED) * 1000,
+      easing: 'linear',
+      fill: 'forwards',
+    })
+    anim.onfinish = next
+    return () => anim.cancel()
+  }, [turn])
 
   return (
-    <div className="ticker" aria-label="Últimos descartes">
-      <div className="ticker__track">
-        {messages.map((m, i) => (
-          <span key={i} className="ticker__item">
-            {m}
-          </span>
-        ))}
-      </div>
+    <div className="ticker" ref={box} aria-label="Últimos descartes">
+      <span key={turn} ref={text} className="ticker__item">
+        {message}
+      </span>
     </div>
   )
 }

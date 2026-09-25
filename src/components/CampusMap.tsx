@@ -2,7 +2,17 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useEffect, useMemo, type ReactNode } from 'react'
 import { MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet'
-import { DEFAULT_ZOOM, FACENS_CENTER, MAP_ATTRIBUTION, MAP_MAX_ZOOM, MAP_TILE_FILTER, MAP_TILE_URL } from '../lib/campus'
+import {
+  DEFAULT_ZOOM,
+  FACENS_CENTER,
+  MAP_ATTRIBUTION,
+  MAP_BOUNDS_PAD,
+  MAP_MAX_ZOOM,
+  MAP_MIN_ZOOM,
+  MAP_MODE,
+  MAP_TILE_FILTER,
+  MAP_TILE_URL,
+} from '../lib/campus'
 import type { Bin } from '../lib/types'
 import { iconSvg } from './PixelArt'
 
@@ -26,6 +36,37 @@ const ICON_CACHE = {
 }
 
 const meIcon = L.divIcon({ className: '', html: '<div class="me-dot"></div>', iconSize: [18, 18], iconAnchor: [9, 9] })
+
+/** Base vetorial (MapLibre) como camada do Leaflet. Carregada sob demanda para não pesar o início do app. */
+function VectorBase() {
+  const map = useMap()
+  useEffect(() => {
+    let layer: L.Layer | undefined
+    let cancelled = false
+    void Promise.all([
+      import('@maplibre/maplibre-gl-leaflet'),
+      import('../lib/mapStyle'),
+      import('maplibre-gl'),
+      // o worker do MapLibre 6 é um arquivo separado: o Vite empacota e devolve a URL
+      import('maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'),
+      import('maplibre-gl/dist/maplibre-gl.css'),
+    ]).then(
+      ([{ maplibreGL }, { MAP_STYLE, MAP_VECTOR_ATTRIBUTION }, maplibre, worker]) => {
+        if (cancelled) return
+        maplibre.setWorkerUrl(worker.default)
+        layer = maplibreGL({ style: MAP_STYLE, attributionControl: false })
+        layer.getAttribution = () => MAP_VECTOR_ATTRIBUTION
+        layer.addTo(map)
+        map.attributionControl?.addAttribution(MAP_VECTOR_ATTRIBUTION)
+      },
+    )
+    return () => {
+      cancelled = true
+      layer?.remove()
+    }
+  }, [map])
+  return null
+}
 
 function ClickHandler({ onClick }: { onClick?: (lat: number, lng: number) => void }) {
   useMapEvents({ click: (e) => onClick?.(e.latlng.lat, e.latlng.lng) })
@@ -67,6 +108,14 @@ export function CampusMap({
   onBinDrag,
 }: CampusMapProps) {
   const center = useMemo<[number, number]>(() => [FACENS_CENTER.lat, FACENS_CENTER.lng], [])
+  const bounds = useMemo(
+    () =>
+      L.latLngBounds(
+        [FACENS_CENTER.lat - MAP_BOUNDS_PAD, FACENS_CENTER.lng - MAP_BOUNDS_PAD],
+        [FACENS_CENTER.lat + MAP_BOUNDS_PAD, FACENS_CENTER.lng + MAP_BOUNDS_PAD],
+      ),
+    [],
+  )
   return (
     <MapContainer
       center={center}
@@ -74,9 +123,16 @@ export function CampusMap({
       zoomControl={false}
       attributionControl
       maxZoom={MAP_MAX_ZOOM}
-      className={MAP_TILE_FILTER === 'dark' ? 'map--dark' : undefined}
+      minZoom={MAP_MIN_ZOOM}
+      maxBounds={bounds}
+      maxBoundsViscosity={0.8}
+      className={MAP_MODE === 'raster' && MAP_TILE_FILTER === 'dark' ? 'map--dark' : undefined}
     >
-      <TileLayer url={MAP_TILE_URL} attribution={MAP_ATTRIBUTION} maxZoom={MAP_MAX_ZOOM} />
+      {MAP_MODE === 'raster' && MAP_TILE_URL ? (
+        <TileLayer url={MAP_TILE_URL} attribution={MAP_ATTRIBUTION} maxZoom={MAP_MAX_ZOOM} />
+      ) : (
+        <VectorBase />
+      )}
       <ClickHandler onClick={onMapClick} />
       <FlyTo target={flyTo ?? null} />
       {bins.map((bin) => {

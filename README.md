@@ -21,7 +21,7 @@ Abra http://localhost:5173. No modo demo tudo é simulado: dados, IA (sorteia um
 | Parte | Tecnologia |
 |---|---|
 | App | React 19 + Vite + TypeScript + `vite-plugin-pwa` |
-| Mapa | Leaflet + tiles escuros do CARTO |
+| Mapa | Leaflet + MapLibre (vetorial, OpenFreeMap, sem chave) com estilo próprio em `src/lib/mapStyle.ts` |
 | Backend | Supabase (Auth por código de e-mail, Postgres com RLS, Storage, Edge Functions) |
 | IA | Google Gemini (`gemini-3.5-flash-lite` por padrão, 3.1 Flash Lite como reserva; configurável) |
 | Deploy | Vercel (site estático) |
