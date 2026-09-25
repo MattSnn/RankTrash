@@ -3,7 +3,7 @@ import { Mascot } from '../components/Mascot'
 import { PublicShell } from '../components/PublicShell'
 import { api } from '../lib/api'
 import { play } from '../lib/sfx'
-import { loginErrorMessage } from './Login'
+import { allowDuplicateRetry, isDuplicateCallback, loginErrorMessage } from './Login'
 
 type State = { kind: 'working' } | { kind: 'done'; code: string } | { kind: 'error'; message: string }
 
@@ -18,10 +18,12 @@ export function ExternalLogin() {
     const params = new URLSearchParams(window.location.search)
     const handoff = params.get('h')
     const returned = params.get('error_description') ?? params.get('error')
-    if (returned) {
+    if (returned && !(handoff && isDuplicateCallback(returned) && allowDuplicateRetry(`ranktrash:dup-retry:${handoff}`))) {
       setState({ kind: 'error', message: loginErrorMessage(returned) })
       return
     }
+    // retorno repetido da Microsoft: segue de novo para o login (sem pedir senha) e mostra o mesmo código
+    if (returned) window.history.replaceState(null, '', `/entrar?h=${handoff}`)
     if (!handoff) {
       setState({ kind: 'error', message: 'Link de login inválido. Volte ao app e toque em entrar.' })
       return

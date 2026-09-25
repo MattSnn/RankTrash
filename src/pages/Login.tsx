@@ -19,6 +19,26 @@ function MicrosoftLogo() {
   )
 }
 
+/**
+ * O retorno da Microsoft às vezes chega duas vezes (toque duplo, navegador repetindo a requisição):
+ * o 1º dá certo e o 2º volta com este erro. Não é erro do aluno: basta refazer o login (a Microsoft já está logada).
+ */
+export function isDuplicateCallback(raw: string): boolean {
+  return /state has already been used|already redeemed|flow state/i.test(raw)
+}
+
+/** Refaz o login no máximo 2 vezes por aba para não entrar em loop. */
+export function allowDuplicateRetry(key: string): boolean {
+  try {
+    const n = Number(sessionStorage.getItem(key) ?? '0')
+    if (n >= 2) return false
+    sessionStorage.setItem(key, String(n + 1))
+    return true
+  } catch {
+    return false
+  }
+}
+
 export function loginErrorMessage(raw: string): string {
   if (/banid/i.test(raw)) return 'Esta conta foi banida do RankTrash.'
   if (/dom[ií]nio permitido/i.test(raw)) return 'Use sua conta @facens.br. Contas de fora da Facens não podem entrar.'
@@ -32,6 +52,10 @@ function readReturnError(): string | null {
   const raw = params.get('error_description') ?? params.get('error')
   if (!raw) return null
   window.history.replaceState(null, '', window.location.pathname)
+  if (isDuplicateCallback(raw) && allowDuplicateRetry('ranktrash:dup-retry')) {
+    void api.signInWithMicrosoft() // refaz sozinho; volta logado sem pedir senha
+    return null
+  }
   return loginErrorMessage(raw)
 }
 
