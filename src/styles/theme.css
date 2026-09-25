@@ -1091,3 +1091,21 @@ p {
     animation: none;
   }
 }
+
+/* ---------- Login Microsoft ---------- */
+.btn--ms {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.ms-logo {
+  display: inline-grid;
+  grid-template-columns: repeat(2, 7px);
+  gap: 2px;
+  flex: none;
+}
+.ms-logo i {
+  width: 7px;
+  height: 7px;
+}

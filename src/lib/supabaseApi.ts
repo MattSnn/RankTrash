@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { formatPersonName, looksLikeEmailName } from './names'
 import type { Api, Bin, Disposal, LeaderRow, Profile, RegisterResult } from './types'
 
 const DISPOSAL_FIELDS =
@@ -8,7 +9,8 @@ type DisposalRow = Disposal & { image_path: string | null }
 
 export function createSupabaseApi(url: string, anonKey: string): Api {
   const sb: SupabaseClient = createClient(url, anonKey, {
-    auth: { persistSession: true, autoRefreshToken: true },
+    // PKCE: a Microsoft devolve ?code= para o app, que troca pela sessão sozinho (detectSessionInUrl)
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'pkce' },
   })
 
   async function uid(): Promise<string> {
@@ -42,12 +44,16 @@ export function createSupabaseApi(url: string, anonKey: string): Api {
       const { data } = sb.auth.onAuthStateChange((_event, session) => cb(session?.user.email ?? null))
       return () => data.subscription.unsubscribe()
     },
-    async sendLoginCode(email) {
-      // Login por código de 6 dígitos (o e-mail não traz link: link abriria no navegador, fora do PWA)
-      check(await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: true } }))
-    },
-    async verifyLoginCode(email, code) {
-      check(await sb.auth.verifyOtp({ email, token: code, type: 'email' }))
+    async signInWithMicrosoft() {
+      const { error } = await sb.auth.signInWithOAuth({
+        provider: 'azure',
+        options: {
+          scopes: 'openid email profile',
+          redirectTo: window.location.origin,
+          queryParams: { prompt: 'select_account', domain_hint: 'facens.br' },
+        },
+      })
+      if (error) throw new Error(error.message)
     },
     async signOut() {
       await sb.auth.signOut()
@@ -56,8 +62,16 @@ export function createSupabaseApi(url: string, anonKey: string): Api {
     async getProfile() {
       const { data: session } = await sb.auth.getSession()
       const id = await uid()
-      const row = check(await sb.from('profiles').select('*').eq('id', id).single())
-      return { ...(row as Profile), email: session.session?.user.email ?? '' }
+      const row = check(await sb.from('profiles').select('*').eq('id', id).single()) as Profile
+      const user = session.session?.user
+      const email = user?.email ?? ''
+      // perfis antigos ficaram com o RA/parte do e-mail como nome: usa o nome da conta Microsoft
+      const realName = formatPersonName(user?.user_metadata?.full_name ?? user?.user_metadata?.name)
+      if (realName && looksLikeEmailName(row.display_name, email)) {
+        const { error } = await sb.from('profiles').update({ display_name: realName }).eq('id', id)
+        if (!error) row.display_name = realName
+      }
+      return { ...row, email }
     },
     async updateProfile(patch) {
       const id = await uid()

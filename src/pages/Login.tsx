@@ -1,64 +1,52 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState } from 'react'
 import { InstallBanner } from '../components/InstallPrompt'
 import { Mascot } from '../components/Mascot'
-import { allowedDomains, api, isAllowedEmail } from '../lib/api'
+import { api } from '../lib/api'
 import { play } from '../lib/sfx'
 
+/** Logo da Microsoft (4 quadrados), no estilo pixel. */
+function MicrosoftLogo() {
+  const colors = ['#f25022', '#7fba00', '#00a4ef', '#ffb900']
+  return (
+    <span className="ms-logo" aria-hidden>
+      {colors.map((c) => (
+        <i key={c} style={{ background: c }} />
+      ))}
+    </span>
+  )
+}
+
+/** Erro devolvido pelo Supabase/Microsoft na URL de retorno (ex.: e-mail fora do domínio). */
+function readReturnError(): string | null {
+  const params = new URLSearchParams(window.location.search + '&' + window.location.hash.replace(/^#/, ''))
+  const raw = params.get('error_description') ?? params.get('error')
+  if (!raw) return null
+  window.history.replaceState(null, '', window.location.pathname)
+  if (/dom[ií]nio permitido/i.test(raw)) return 'Use sua conta @facens.br. Contas de fora da Facens não podem entrar.'
+  if (/consent|admin/i.test(raw)) return 'A Facens precisa liberar o RankTrash na conta Microsoft. Avise a organização da campanha.'
+  return `Não foi possível entrar (${raw.slice(0, 120)}).`
+}
+
 export function Login() {
-  const [email, setEmail] = useState(api.demo ? 'voce@facens.br' : '')
-  const [code, setCode] = useState('')
-  const [step, setStep] = useState<'email' | 'code'>('email')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [cooldown, setCooldown] = useState(0)
 
   useEffect(() => {
-    if (cooldown <= 0) return
-    const t = setTimeout(() => setCooldown((c) => c - 1), 1000)
-    return () => clearTimeout(t)
-  }, [cooldown])
-
-  async function resend() {
-    setError(null)
-    try {
-      await api.sendLoginCode(email.trim().toLowerCase())
-      setCooldown(60)
-    } catch (err) {
-      setError((err as Error).message)
-    }
-  }
-
-  async function sendCode(e: FormEvent) {
-    e.preventDefault()
-    setError(null)
-    if (!isAllowedEmail(email)) {
-      setError(`Use seu e-mail institucional (@${allowedDomains.join(', @')}).`)
-      return
-    }
-    setBusy(true)
-    try {
-      await api.sendLoginCode(email.trim().toLowerCase())
-      setStep('code')
-      setCooldown(60)
-      play('click')
-    } catch (err) {
-      setError((err as Error).message)
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function verify(e: FormEvent) {
-    e.preventDefault()
-    setError(null)
-    setBusy(true)
-    try {
-      await api.verifyLoginCode(email.trim().toLowerCase(), code.trim())
-      play('success')
-    } catch {
-      setError('Código inválido ou expirado.')
+    const e = readReturnError()
+    if (e) {
+      setError(e)
       play('fail')
-    } finally {
+    }
+  }, [])
+
+  async function signIn() {
+    setError(null)
+    setBusy(true)
+    play('click')
+    try {
+      await api.signInWithMicrosoft() // sai do app para a Microsoft e volta logado
+    } catch (err) {
+      setError((err as Error).message)
       setBusy(false)
     }
   }
@@ -77,61 +65,13 @@ export function Login() {
                 DESCARTE CERTO, GANHE PONTOS
                 <br />E SUBA NO RANKING DA FACENS.
               </p>
-              {step === 'email' ? (
-                <form onSubmit={sendCode}>
-                  <label className="field">
-                    <span>E-MAIL INSTITUCIONAL</span>
-                    <input
-                      className="input"
-                      type="email"
-                      inputMode="email"
-                      autoComplete="email"
-                      placeholder={`nome@${allowedDomains[0] ?? 'facens.br'}`}
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                    />
-                  </label>
-                  <button className="btn btn--orange btn--block" disabled={busy}>
-                    {busy ? 'ENVIANDO...' : 'RECEBER CÓDIGO'}
-                  </button>
-                </form>
-              ) : (
-                <form onSubmit={verify}>
-                  <p className="muted">
-                    Enviamos um código de 6 dígitos para {email}. Digite aqui (confira o spam).
-                    {api.demo && ' (demo: qualquer código)'}
-                  </p>
-                  <label className="field">
-                    <span>CÓDIGO</span>
-                    <input
-                      className="input"
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      maxLength={10}
-                      value={code}
-                      onChange={(e) => setCode(e.target.value)}
-                      required
-                      autoFocus
-                    />
-                  </label>
-                  <button className="btn btn--green btn--block" disabled={busy}>
-                    {busy ? 'VERIFICANDO...' : 'ENTRAR'}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn--ghost btn--block"
-                    style={{ marginTop: 14 }}
-                    onClick={() => void resend()}
-                    disabled={cooldown > 0}
-                  >
-                    {cooldown > 0 ? `REENVIAR EM ${cooldown}S` : 'REENVIAR CÓDIGO'}
-                  </button>
-                  <button type="button" className="btn btn--ghost btn--block" style={{ marginTop: 12 }} onClick={() => setStep('email')}>
-                    TROCAR E-MAIL
-                  </button>
-                </form>
-              )}
+              <button className="btn btn--orange btn--block btn--ms" onClick={() => void signIn()} disabled={busy}>
+                <MicrosoftLogo />
+                {busy ? 'ABRINDO...' : 'ENTRAR COM CONTA FACENS'}
+              </button>
+              <p className="muted" style={{ marginTop: 12 }}>
+                Use sua conta Microsoft da Facens (e-mail @facens.br).
+              </p>
               {error && <p className="error-text">{error}</p>}
             </div>
           </div>

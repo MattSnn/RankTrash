@@ -8,19 +8,3 @@ const demo = import.meta.env.VITE_DEMO === 'true' || !url || !key
 
 export const api: Api = demo ? createMockApi() : createSupabaseApi(url!, key!)
 
-export const allowedDomains: string[] = ((import.meta.env.VITE_ALLOWED_EMAIL_DOMAINS as string | undefined) ?? 'facens.br')
-  .split(',')
-  .map((d) => d.trim().toLowerCase())
-  .filter(Boolean)
-
-/** E-mails liberados individualmente (ex.: testes com e-mail pessoal). */
-const allowedEmails: string[] = ((import.meta.env.VITE_ALLOWED_EMAILS as string | undefined) ?? '')
-  .split(',')
-  .map((e) => e.trim().toLowerCase())
-  .filter(Boolean)
-
-export function isAllowedEmail(email: string): boolean {
-  const normalized = email.trim().toLowerCase()
-  const domain = normalized.split('@')[1] ?? ''
-  return allowedDomains.length === 0 || allowedDomains.includes(domain) || allowedEmails.includes(normalized)
-}

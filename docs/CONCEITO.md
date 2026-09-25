@@ -112,7 +112,7 @@ Os valores ficam em `supabase/functions/_shared/scoring.ts` e `materials.ts`, e 
 ## 10. Arquitetura
 
 ```
-PWA (React + Vite + TypeScript)  ──►  Supabase Auth (código por e-mail, só @facens.br)
+PWA (React + Vite + TypeScript)  ──►  Supabase Auth (conta Microsoft da Facens, só @facens.br)
         │                              Postgres + RLS (bins, disposals, profiles, seasons…)
         │                              Storage (bucket privado "disposals")
         └── foto + GPS ──►  Edge Function "register-disposal" (Deno)
@@ -130,7 +130,7 @@ Hospedagem do PWA: Vercel (ou qualquer host estático)
 
 ## 11. LGPD e privacidade
 
-* Login só com e-mail institucional. O perfil guarda só o nome de exibição e o curso.
+* Login só com a conta Microsoft institucional (sem senha própria nem e-mail de código). O perfil guarda só o nome de exibição (primeiro + último nome, editável) e o curso.
 * Localização coletada **só no momento do registro**, nunca em segundo plano.
 * Fotos em bucket **privado**: só o dono e os admins veem.
 * **Atenção:** no plano gratuito do Gemini, o Google pode usar o conteúdo enviado para melhorar os modelos. Isso aparece no termo de consentimento do app. Para produção, avaliar o plano pago (sem esse uso).

@@ -22,7 +22,7 @@ Abra http://localhost:5173. No modo demo tudo é simulado: dados, IA (sorteia um
 |---|---|
 | App | React 19 + Vite + TypeScript + `vite-plugin-pwa` |
 | Mapa | Leaflet + MapLibre (vetorial, OpenFreeMap, sem chave) com estilo próprio em `src/lib/mapStyle.ts` |
-| Backend | Supabase (Auth por código de e-mail, Postgres com RLS, Storage, Edge Functions) |
+| Backend | Supabase (Auth com conta Microsoft da faculdade, Postgres com RLS, Storage, Edge Functions) |
 | IA | Google Gemini (`gemini-3.5-flash-lite` por padrão, 3.1 Flash Lite como reserva; configurável) |
 | Deploy | Vercel (site estático) |
 
@@ -52,12 +52,14 @@ tests/          testes (vitest) das regras
    npx supabase db push       # aplica supabase/migrations
    ```
    Opcional: rode `supabase/seed.sql` no SQL Editor para criar lixeiras de exemplo.
-3. **Login por código:** em *Authentication → Email Templates*, nos modelos **Magic Link** e **Confirm signup**:
-   * **Assunto:** `Seu código RankTrash: {{ .Token }}`
-   * **Corpo:** cole o HTML de [`supabase/templates/login-code.html`](supabase/templates/login-code.html) (só o código, sem link: o link abriria no navegador, fora do app instalado).
+3. **Login com a conta Microsoft da faculdade (Entra ID):**
+   1. Em https://portal.azure.com → *Microsoft Entra ID* → *Registros de aplicativo* → **Novo registro**. Use o tipo *Contas em qualquer diretório organizacional (multilocatário)* e o URI de redirecionamento **Web** `https://SEU_REF.supabase.co/auth/v1/callback`.
+   2. Em *Certificados e segredos*, crie um **segredo do cliente** e copie o *Valor*.
+   3. Em *Configuração de token* → *Adicionar declaração opcional* → **ID**, marque `email` e `xms_edov`. Assim o e-mail chega verificado.
+   4. No Supabase, em *Authentication → Sign In / Providers → Azure*, ative e cole o *ID do aplicativo (cliente)* e o segredo. Em *Azure Tenant URL*, use `https://login.microsoftonline.com/organizations`.
 
-   Se o e-mail dos alunos não for `@facens.br`, ajuste `app_config.allowed_email_domains` no banco **e** `VITE_ALLOWED_EMAIL_DOMAINS`.
-   O remetente, o limite de envios e o envio para qualquer e-mail dependem de um **SMTP próprio** (*Authentication → Emails → SMTP Settings*; Resend e Brevo têm plano grátis).
+   Só entram e-mails dos domínios em `app_config.allowed_email_domains` (padrão `facens.br`). A regra fica no trigger `handle_new_user`, que também cria o perfil com o nome da conta (primeiro + último nome). Contas de outras instituições recebem o erro na volta ao app.
+   Se a TI da instituição exigir aprovação de administrador para apps externos, peça o consentimento em `https://login.microsoftonline.com/organizations/adminconsent?client_id=ID_DO_APP`.
 4. **Gemini:** gere uma chave em https://aistudio.google.com/apikey e configure a função:
    ```bash
    npx supabase secrets set GEMINI_API_KEY=sua-chave
@@ -65,7 +67,7 @@ tests/          testes (vitest) das regras
    npx supabase functions deploy register-disposal
    ```
 5. **App:** copie `.env.example` para `.env.local` e preencha `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`.
-6. **Admin:** depois do 1º login, rode no SQL Editor:
+6. **Admin:** e-mails em `app_config.admin_emails` viram admin no 1º login. Para promover alguém depois, rode no SQL Editor:
    ```sql
    update public.profiles set role = 'admin'
     where id = (select id from auth.users where email = 'seu.email@facens.br');
@@ -73,7 +75,7 @@ tests/          testes (vitest) das regras
    Depois, cadastre as lixeiras reais pela aba **ADMIN**. O melhor jeito é ficar ao lado de cada lixeira e tocar em *USAR MINHA LOCALIZAÇÃO*.
 7. **Deploy:** importe o repositório na Vercel (framework: Vite), configure as mesmas variáveis `VITE_*` e adicione um rewrite de SPA (o `vercel.json` já está no repo).
 
-## Domínio e e-mail (produção)
+## Domínio (produção)
 
 App: **https://ranktrash.eco.br** (Vercel). `www` redireciona para o domínio principal.
 
@@ -81,10 +83,8 @@ App: **https://ranktrash.eco.br** (Vercel). `www` redireciona para o domínio pr
 2. **Registros da Vercel** (Cloudflare → DNS, proxy **desligado**/nuvem cinza):
    * `A` `@` → `76.76.21.21`
    * `CNAME` `www` → `cname.vercel-dns.com`
-3. **Resend:** adicione o domínio `ranktrash.eco.br`, crie na Cloudflare os registros que ele pedir (SPF/DKIM, nuvem cinza), espere ficar *Verified* e gere uma API key.
-4. **Supabase → Authentication → Emails → SMTP:** host `smtp.resend.com`, porta `465`, usuário `resend`, senha = API key do Resend, remetente `login@ranktrash.eco.br` (nome `RankTrash`). Em *Rate Limits*, suba o limite de e-mails por hora.
-5. **Modelos Magic Link e Confirm signup:** assunto `Seu código RankTrash: {{ .Token }}`, corpo = [`supabase/templates/login-code.html`](supabase/templates/login-code.html).
-6. **URL Configuration:** Site URL `https://ranktrash.eco.br`. Em Redirect URLs, deixe `https://ranktrash.eco.br/**` e `https://ranktrash.vercel.app/**`.
+3. **Supabase → URL Configuration:** Site URL `https://ranktrash.eco.br`. Em Redirect URLs, deixe `https://ranktrash.eco.br/**` e `https://ranktrash.vercel.app/**`.
+4. **E-mail (opcional):** o domínio também está verificado no Resend (SPF/DKIM na Cloudflare) e configurado como SMTP do Supabase. O login não usa e-mail, mas o SMTP fica pronto para avisos futuros.
 
 ## Scripts
 
@@ -100,4 +100,3 @@ App: **https://ranktrash.eco.br** (Vercel). `www` redireciona para o domínio pr
 
 * Job para apagar fotos com mais de 60 dias (prometido no termo de consentimento).
 * O feed do letreiro é atualizado por polling (30 s), não em tempo real.
-* Os e-mails de login dependem do SMTP do Supabase, que no plano grátis tem limite baixo por hora. Para o piloto, configure um SMTP próprio.

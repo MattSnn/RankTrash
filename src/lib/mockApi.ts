@@ -167,13 +167,10 @@ export function createMockApi(): Api {
       listeners.add(cb)
       return () => listeners.delete(cb)
     },
-    async sendLoginCode() {
+    async signInWithMicrosoft() {
       await delay(400)
-    },
-    async verifyLoginCode(e) {
-      await delay(300)
-      email = e
-      profile = { ...profile, email: e }
+      email = 'voce@facens.br'
+      profile = { ...profile, email }
       emit()
     },
     async signOut() {

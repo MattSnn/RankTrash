@@ -110,8 +110,8 @@ export interface Api {
   demo: boolean
   getSessionEmail(): Promise<string | null>
   onAuthChange(cb: (email: string | null) => void): () => void
-  sendLoginCode(email: string): Promise<void>
-  verifyLoginCode(email: string, code: string): Promise<void>
+  /** Login com a conta Microsoft da faculdade (sai do app e volta logado). */
+  signInWithMicrosoft(): Promise<void>
   signOut(): Promise<void>
 
   getProfile(): Promise<Profile>
