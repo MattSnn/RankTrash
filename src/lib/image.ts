@@ -18,7 +18,12 @@ export function captureFrame(video: HTMLVideoElement): Promise<Blob> {
 }
 
 /** Converte uma foto escolhida da galeria em JPEG reduzido (modo teste). */
-export async function fileToJpeg(file: File): Promise<Blob> {
+export function fileToJpeg(file: File): Promise<Blob> {
+  return blobToJpeg(file)
+}
+
+/** Reduz qualquer imagem (galeria, foto com flash da câmera) para o JPEG que o servidor aceita. */
+export async function blobToJpeg(file: Blob): Promise<Blob> {
   const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' })
   try {
     return await drawToJpeg(bmp, bmp.width, bmp.height)

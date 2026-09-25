@@ -5,7 +5,7 @@ import { MATERIAL_INFO } from '../../supabase/functions/_shared/materials.ts'
 import { Mascot } from '../components/Mascot'
 import { Icon } from '../components/PixelArt'
 import { api } from '../lib/api'
-import { ALLOW_GALLERY, captureFrame, fileToJpeg, openRearCamera } from '../lib/image'
+import { ALLOW_GALLERY, blobToJpeg, captureFrame, fileToJpeg, openRearCamera } from '../lib/image'
 import { reviewReasons } from '../lib/review'
 import { useSession } from '../lib/session'
 import { play } from '../lib/sfx'
@@ -20,6 +20,10 @@ function useCamera(active: boolean) {
   const [ready, setReady] = useState(false)
   const [attempt, setAttempt] = useState(0)
   const trackRef = useRef<MediaStreamTrack | null>(null)
+  const imageCaptureRef = useRef<ImageCapture | null>(null)
+  // flash de verdade da câmera (Chrome/Android: pré-flash, foco e exposição feitos pelo sistema)
+  const [nativeFlash, setNativeFlash] = useState(false)
+  // alternativa: acender a lanterna durante a captura
   const [torchSupported, setTorchSupported] = useState(false)
   // modo flash: a luz só acende no instante da foto (como o flash do celular), não fica ligada
   const [flashOn, setFlashOn] = useState(false)
@@ -34,11 +38,21 @@ function useCamera(active: boolean) {
       .then((s) => {
         if (cancelled) return s.getTracks().forEach((t) => t.stop())
         stream = s
-        // flash (lanterna): Android/Chrome expõe "torch"; o Safari do iPhone em geral não
+        // flash: Android/Chrome expõe o flash da câmera (ImageCapture) e/ou a lanterna ("torch");
+        // o Safari do iPhone em geral não expõe nenhum dos dois
         const track = s.getVideoTracks()[0] ?? null
         trackRef.current = track
         const caps = track?.getCapabilities?.() as (MediaTrackCapabilities & { torch?: boolean }) | undefined
         setTorchSupported(!!caps?.torch)
+        setNativeFlash(false)
+        imageCaptureRef.current = null
+        if (track && typeof ImageCapture !== 'undefined') {
+          const ic = new ImageCapture(track)
+          imageCaptureRef.current = ic
+          ic.getPhotoCapabilities()
+            .then((pc) => !cancelled && setNativeFlash(!!pc.fillLightMode?.includes('flash')))
+            .catch(() => undefined)
+        }
         const video = videoRef.current
         if (video) {
           video.srcObject = s
@@ -54,6 +68,7 @@ function useCamera(active: boolean) {
     return () => {
       cancelled = true
       trackRef.current = null
+      imageCaptureRef.current = null
       stream?.getTracks().forEach((t) => t.stop())
     }
   }, [active, attempt])
@@ -62,18 +77,36 @@ function useCamera(active: boolean) {
     await trackRef.current?.applyConstraints({ advanced: [{ torch: on } as MediaTrackConstraintSet] })
   }
 
-  /** Com o modo flash ligado: acende, espera a câmera ajustar a exposição, captura e apaga. */
-  async function withFlash<T>(capture: () => Promise<T>): Promise<T> {
-    if (!flashOn || !torchSupported || !trackRef.current) return capture()
+  /**
+   * Tira a foto. Com o modo flash ligado:
+   * 1) se a câmera tem flash nativo, pede ao sistema uma foto com flash (pré-flash, foco e exposição como no app da câmera);
+   * 2) senão, acende a lanterna, pede foco, espera a exposição estabilizar, captura e apaga.
+   */
+  async function capture(frame: () => Promise<Blob>): Promise<Blob> {
+    if (!flashOn) return frame()
+    const ic = imageCaptureRef.current
+    if (nativeFlash && ic) {
+      try {
+        return await blobToJpeg(await ic.takePhoto({ fillLightMode: 'flash' }))
+      } catch {
+        setNativeFlash(false) // cai para a lanterna
+      }
+    }
+    const track = trackRef.current
+    if (!torchSupported || !track) return frame()
     try {
       await setTorch(true)
-      await new Promise((r) => setTimeout(r, 450))
+      const caps = track.getCapabilities?.() as MediaTrackCapabilities & { focusMode?: string[] }
+      if (caps?.focusMode?.includes('single-shot')) {
+        await track.applyConstraints({ advanced: [{ focusMode: 'single-shot' } as MediaTrackConstraintSet] }).catch(() => undefined)
+      }
+      await new Promise((r) => setTimeout(r, 900)) // foco + exposição com a luz acesa
     } catch {
       setTorchSupported(false)
-      return capture()
+      return frame()
     }
     try {
-      return await capture()
+      return await frame()
     } finally {
       await setTorch(false).catch(() => undefined)
     }
@@ -84,10 +117,10 @@ function useCamera(active: boolean) {
     error,
     ready,
     retry: () => setAttempt((a) => a + 1),
-    torchSupported,
+    flashSupported: nativeFlash || torchSupported,
     flashOn,
     toggleFlash: () => setFlashOn((f) => !f),
-    withFlash,
+    capture,
   }
 }
 
@@ -120,10 +153,8 @@ export function Register() {
   const shoot = useCallback(async () => {
     const video = camera.videoRef.current
     if (!video) return
-    const blob = await camera.withFlash(() => {
-      play('shutter')
-      return captureFrame(video)
-    })
+    play('shutter')
+    const blob = await camera.capture(() => captureFrame(video))
     setPhoto({ blob, url: URL.createObjectURL(blob), source: 'camera' })
     setStep('preview')
   }, [camera])
@@ -245,7 +276,7 @@ export function Register() {
             <button className="shutter" onClick={shoot} disabled={!camera.ready} aria-label="Tirar foto">
               <Icon name="camera" size={30} />
             </button>
-            {camera.torchSupported ? (
+            {camera.flashSupported ? (
               <button
                 className={`btn btn--sm flash-btn ${camera.flashOn ? 'flash-btn--on' : ''}`}
                 onClick={camera.toggleFlash}
