@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   aiSignature,
   checkAiResult,
@@ -126,63 +126,88 @@ describe('parseGeminiResponse', () => {
   })
 })
 
-describe('classifyImage (retry e modelo reserva)', () => {
-  const ok = { candidates: [{ content: { parts: [{ text: JSON.stringify({ is_trash: true, item_label: 'Lata', material: 'aluminio', confidence: 0.9 }) }] } }] }
-  it('tenta de novo em 503 e cai para o modelo reserva', async () => {
+describe('classifyImage (reservas e disparo paralelo)', () => {
+  const okBody = (label: string) =>
+    JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify({ is_trash: true, item_label: label, material: 'aluminio', confidence: 0.9 }) }] } }] })
+  const model = (url: string) => url.split('/models/')[1].split(':')[0]
+  const hang = (init: RequestInit) =>
+    new Promise<Response>((_, reject) => init.signal!.addEventListener('abort', () => reject(new DOMException('abortado', 'AbortError'))))
+  let realFetch: typeof fetch
+  beforeEach(() => {
+    realFetch = globalThis.fetch
+  })
+  afterEach(() => {
+    globalThis.fetch = realFetch
+  })
+
+  it('503 no principal: passa na hora para o 3.1 Flash Lite', async () => {
     const { classifyImage } = await import('../supabase/functions/_shared/gemini.ts')
     const calls: string[] = []
-    const realFetch = globalThis.fetch
     globalThis.fetch = (async (url: string) => {
-      calls.push(url.split('/models/')[1].split(':')[0])
-      return calls.length < 3 ? new Response('busy', { status: 503 }) : new Response(JSON.stringify(ok), { status: 200 })
+      calls.push(model(url))
+      return calls.length === 1 ? new Response('busy', { status: 503 }) : new Response(okBody('Lata'), { status: 200 })
     }) as typeof fetch
-    try {
-      const r = await classifyImage('k', 'b64', 'image/jpeg')
-      expect(r.item_label).toBe('Lata')
-      expect(calls).toEqual(['gemini-3.5-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.5-flash-lite-preview'])
-    } finally {
-      globalThis.fetch = realFetch
-    }
+    const r = await classifyImage('k', 'b64', 'image/jpeg')
+    expect(r.item_label).toBe('Lata')
+    expect(calls).toEqual(['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'])
   })
+
+  it('principal lento: dispara o reserva em paralelo e usa o primeiro que responder', async () => {
+    const { classifyImage } = await import('../supabase/functions/_shared/gemini.ts')
+    const calls: string[] = []
+    let primaryAborted = false
+    globalThis.fetch = ((url: string, init: RequestInit) => {
+      calls.push(model(url))
+      if (model(url) === 'gemini-3.5-flash-lite') {
+        init.signal!.addEventListener('abort', () => (primaryAborted = true))
+        return hang(init)
+      }
+      return Promise.resolve(new Response(okBody('Copo'), { status: 200 }))
+    }) as typeof fetch
+    const started = Date.now()
+    const r = await classifyImage('k', 'b64', 'image/jpeg', undefined, { hedgeMs: 150 })
+    expect(r.item_label).toBe('Copo')
+    expect(Date.now() - started).toBeLessThan(1000)
+    expect(calls).toEqual(['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'])
+    expect(primaryAborted).toBe(true) // a chamada lenta é cancelada
+  })
+
   it('não insiste em erro de chave (403)', async () => {
     const { classifyImage } = await import('../supabase/functions/_shared/gemini.ts')
-    const realFetch = globalThis.fetch
     let n = 0
-    globalThis.fetch = (async () => { n++; return new Response('forbidden', { status: 403 }) }) as typeof fetch
-    try {
-      await expect(classifyImage('k', 'b64', 'image/jpeg')).rejects.toThrow(/403/)
-      expect(n).toBe(1)
-    } finally {
-      globalThis.fetch = realFetch
-    }
-  })
-})
-
-describe('classifyImage (tempo limite)', () => {
-  it('desiste de uma chamada travada e usa o reserva, dentro do orçamento', async () => {
-    const { classifyImage } = await import('../supabase/functions/_shared/gemini.ts')
-    const ok = { candidates: [{ content: { parts: [{ text: JSON.stringify({ is_trash: true, item_label: 'Copo', material: 'papel', confidence: 0.9 }) }] } }] }
-    const realFetch = globalThis.fetch
-    const calls: string[] = []
-    globalThis.fetch = ((url: string, init: RequestInit) => {
-      const m = url.split('/models/')[1].split(':')[0]
-      calls.push(m)
-      if (m === 'gemini-3.5-flash-lite-preview') return Promise.resolve(new Response('not found', { status: 404 }))
-      if (m === 'gemini-2.5-flash') {
-        // nunca responde: só termina quando o AbortSignal dispara
-        return new Promise((_, reject) => init.signal!.addEventListener('abort', () => reject(new DOMException('timeout', 'TimeoutError'))))
-      }
-      return Promise.resolve(new Response(JSON.stringify(ok), { status: 200 }))
+    globalThis.fetch = (async () => {
+      n++
+      return new Response('forbidden', { status: 403 })
     }) as typeof fetch
-    try {
-      const started = Date.now()
-      const r = await classifyImage('k', 'b64', 'image/jpeg', 'gemini-2.5-flash', 12000)
-      expect(r.item_label).toBe('Copo')
-      // travado -> pulado; reserva inexistente (404) -> pulado; responde o próximo
-      expect(calls).toEqual(['gemini-2.5-flash', 'gemini-3.5-flash-lite-preview', 'gemini-3.1-flash-lite'])
-      expect(Date.now() - started).toBeLessThan(12500)
-    } finally {
-      globalThis.fetch = realFetch
-    }
-  }, 20000)
+    await expect(classifyImage('k', 'b64', 'image/jpeg')).rejects.toThrow(/403/)
+    expect(n).toBe(1)
+  })
+
+  it('respeita o tempo total e o cancelamento de fora', async () => {
+    const { classifyImage } = await import('../supabase/functions/_shared/gemini.ts')
+    globalThis.fetch = ((_url: string, init: RequestInit) => hang(init)) as typeof fetch
+    const started = Date.now()
+    await expect(classifyImage('k', 'b64', 'image/jpeg', undefined, { hedgeMs: 50, budgetMs: 400 })).rejects.toThrow(/tempo esgotado/)
+    expect(Date.now() - started).toBeLessThan(1000)
+    const ctrl = new AbortController()
+    const p = classifyImage('k', 'b64', 'image/jpeg', undefined, { signal: ctrl.signal })
+    ctrl.abort()
+    await expect(p).rejects.toThrow()
+  })
+  it('usa raciocínio mínimo e repete sem ele se o modelo recusar', async () => {
+    const { classifyImage } = await import('../supabase/functions/_shared/gemini.ts')
+    const bodies: { m: string; thinking: unknown }[] = []
+    globalThis.fetch = (async (url: string, init: RequestInit) => {
+      const cfg = JSON.parse(init.body as string).generationConfig
+      bodies.push({ m: model(url), thinking: cfg.thinkingConfig })
+      if (bodies.length === 1) return new Response('{"error":{"message":"thinking_level is not supported"}}', { status: 400 })
+      return new Response(okBody('Garrafa'), { status: 200 })
+    }) as typeof fetch
+    const r = await classifyImage('k', 'b64', 'image/jpeg')
+    expect(r.item_label).toBe('Garrafa')
+    expect(bodies).toEqual([
+      { m: 'gemini-3.5-flash-lite', thinking: { thinkingLevel: 'MINIMAL' } },
+      { m: 'gemini-3.5-flash-lite', thinking: undefined },
+    ])
+  })
 })

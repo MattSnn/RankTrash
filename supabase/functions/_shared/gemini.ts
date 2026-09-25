@@ -58,7 +58,16 @@ export const GEMINI_RESPONSE_SCHEMA = {
   ],
 }
 
-export function buildGeminiRequest(imageBase64: string, mimeType: string) {
+/**
+ * Raciocínio mínimo = resposta rápida (classificar uma foto não precisa "pensar").
+ * Gemini 3.x usa thinkingLevel; o 2.5 usa thinkingBudget.
+ */
+export function thinkingConfigFor(model: string): Record<string, unknown> {
+  return /gemini-2\.5/.test(model) ? { thinkingBudget: 0 } : { thinkingLevel: 'MINIMAL' }
+}
+
+/** Monta o corpo do generateContent. Com `model`, inclui a configuração de raciocínio mínimo dele. */
+export function buildGeminiRequest(imageBase64: string, mimeType: string, model?: string) {
   return {
     contents: [
       {
@@ -70,6 +79,7 @@ export function buildGeminiRequest(imageBase64: string, mimeType: string) {
       temperature: 0.1,
       responseMimeType: 'application/json',
       responseSchema: GEMINI_RESPONSE_SCHEMA,
+      ...(model ? { thinkingConfig: thinkingConfigFor(model) } : {}),
     },
   }
 }
@@ -98,62 +108,110 @@ export function parseGeminiResponse(body: unknown): AiResult {
   }
 }
 
-/** Modelos reserva, usados quando o principal está sobrecarregado ou indisponível. */
-// o nome pode ter sufixo "-preview"; nomes inexistentes (404) são pulados na hora
-export const FALLBACK_GEMINI_MODELS = [
-  'gemini-3.5-flash-lite-preview',
-  'gemini-3.1-flash-lite',
-  'gemini-3.1-flash-lite-preview',
-  'gemini-2.5-flash-lite',
-]
-const RETRYABLE = new Set([408, 429, 500, 502, 503, 504])
+/** Modelos reserva, usados quando o principal demora, está sobrecarregado ou indisponível. */
+export const FALLBACK_GEMINI_MODELS = ['gemini-3.1-flash-lite', 'gemini-2.5-flash-lite']
+const RETRYABLE = new Set([404, 408, 429, 500, 502, 503, 504])
+/** Se o modelo atual não respondeu em HEDGE_MS, dispara o próximo em paralelo e usa quem responder primeiro. */
+export const GEMINI_HEDGE_MS = 5_000
 /** Tempo máximo de cada chamada ao Gemini. */
 export const GEMINI_ATTEMPT_TIMEOUT_MS = 20_000
 /** Tempo total para classificar (a Edge Function e o app não podem ficar esperando indefinidamente). */
-export const GEMINI_TOTAL_BUDGET_MS = 50_000
+export const GEMINI_TOTAL_BUDGET_MS = 45_000
+const MAX_PARALLEL = 2
+
+export interface ClassifyOptions {
+  signal?: AbortSignal
+  hedgeMs?: number
+  budgetMs?: number
+}
 
 class FatalGeminiError extends Error {}
 
-export async function classifyImage(
+/**
+ * Classifica a foto. Começa pelo modelo principal; se ele falhar, passa ao próximo na hora,
+ * e se ele só estiver lento, dispara o próximo em paralelo (no máximo 2 ao mesmo tempo).
+ * Fila: principal → reservas → principal de novo (para o caso de 503 passageiro).
+ */
+export function classifyImage(
   apiKey: string,
   imageBase64: string,
   mimeType: string,
   model = DEFAULT_GEMINI_MODEL,
-  budgetMs = GEMINI_TOTAL_BUDGET_MS,
+  opts: ClassifyOptions = {},
 ): Promise<AiResult> {
-  const body = JSON.stringify(buildGeminiRequest(imageBase64, mimeType))
-  // principal, principal de novo, e depois os reservas (uma tentativa cada)
-  const attempts = [model, model, ...FALLBACK_GEMINI_MODELS.filter((m) => m !== model)]
-  const deadline = Date.now() + budgetMs
-  const skip = new Set<string>()
-  let lastError: Error = new Error('Gemini indisponível')
-  for (const [i, m] of attempts.entries()) {
-    if (skip.has(m)) continue
-    const remaining = deadline - Date.now()
-    if (remaining < 3000) break
-    try {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`, {
+  const hedgeMs = opts.hedgeMs ?? GEMINI_HEDGE_MS
+  const budget = AbortSignal.timeout(opts.budgetMs ?? GEMINI_TOTAL_BUDGET_MS)
+  const outer = opts.signal ? AbortSignal.any([budget, opts.signal]) : budget
+  // cada item: modelo + se manda a configuração de raciocínio mínimo
+  const queue = [model, ...FALLBACK_GEMINI_MODELS.filter((x) => x !== model), model].map((m) => ({ m, thinking: true }))
+  const controllers: AbortController[] = []
+
+  return new Promise<AiResult>((resolve, reject) => {
+    let next = 0
+    let running = 0
+    let done = false
+    let hedgeTimer: ReturnType<typeof setTimeout> | undefined
+    let lastError: Error = new Error('Gemini indisponível')
+
+    const finish = (fn: () => void) => {
+      if (done) return
+      done = true
+      clearTimeout(hedgeTimer)
+      outer.removeEventListener('abort', onAbort)
+      controllers.forEach((c) => c.abort())
+      fn()
+    }
+    const onAbort = () => finish(() => reject(new Error(`Gemini: tempo esgotado (${lastError.message})`)))
+
+    const launch = () => {
+      if (done) return
+      if (next >= queue.length) {
+        if (running === 0) finish(() => reject(lastError))
+        return
+      }
+      const { m, thinking } = queue[next++]
+      running++
+      const ctrl = new AbortController()
+      controllers.push(ctrl)
+      clearTimeout(hedgeTimer)
+      hedgeTimer = setTimeout(() => running < MAX_PARALLEL && launch(), hedgeMs)
+      const started = Date.now()
+
+      fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'x-goog-api-key': apiKey },
-        body,
-        // deixa tempo para os modelos reserva se este travar
-        signal: AbortSignal.timeout(Math.min(GEMINI_ATTEMPT_TIMEOUT_MS, Math.round(remaining * 0.6))),
+        body: JSON.stringify(buildGeminiRequest(imageBase64, mimeType, thinking ? m : undefined)),
+        signal: AbortSignal.any([ctrl.signal, outer, AbortSignal.timeout(GEMINI_ATTEMPT_TIMEOUT_MS)]),
       })
-      if (res.ok) {
-        console.log(`Gemini ok: ${m}`)
-        return parseGeminiResponse(await res.json())
-      }
-      const err = new Error(`Gemini ${m} ${res.status}: ${(await res.text()).slice(0, 300)}`)
-      if (res.status === 404) skip.add(m) // modelo não existe: pula
-      else if (!RETRYABLE.has(res.status)) throw new FatalGeminiError(err.message) // chave inválida etc.
-      lastError = err
-    } catch (e) {
-      if (e instanceof FatalGeminiError) throw e
-      lastError = new Error(`Gemini ${m} falhou: ${(e as Error).name} ${(e as Error).message}`)
-      skip.add(m) // travou ou caiu: não insiste no mesmo modelo
+        .then(async (res) => {
+          if (res.ok) {
+            const result = parseGeminiResponse(await res.json())
+            console.log(`Gemini ok: ${m} em ${Date.now() - started} ms`)
+            finish(() => resolve(result))
+            return
+          }
+          const text = await res.text()
+          const err = new Error(`Gemini ${m} ${res.status}: ${text.slice(0, 300)}`)
+          if (res.status === 400 && thinking && /thinking/i.test(text)) {
+            // modelo não aceita a configuração de raciocínio: repete já, sem ela
+            queue.splice(next, 0, { m, thinking: false })
+            throw err
+          }
+          if (!RETRYABLE.has(res.status)) throw new FatalGeminiError(err.message) // chave inválida etc.
+          throw err
+        })
+        .catch((e: Error) => {
+          if (done) return
+          if (e instanceof FatalGeminiError) return finish(() => reject(e))
+          lastError = e.message.startsWith('Gemini ') ? e : new Error(`Gemini ${m} falhou: ${e.name} ${e.message}`)
+          console.warn(lastError.message)
+          running--
+          launch() // falhou: tenta o próximo na hora
+        })
     }
-    console.warn(lastError.message)
-    if (i === 0 && !skip.has(m)) await new Promise((r) => setTimeout(r, 800))
-  }
-  throw lastError
+
+    if (outer.aborted) return onAbort()
+    outer.addEventListener('abort', onAbort)
+    launch()
+  })
 }

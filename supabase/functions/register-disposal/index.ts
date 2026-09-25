@@ -1,6 +1,11 @@
 // Edge Function: registra um descarte (foto + GPS), valida, classifica com o Gemini e dá pontos.
 // Deploy: supabase functions deploy register-disposal
-// Secrets: supabase secrets set GEMINI_API_KEY=... [GEMINI_MODEL=gemini-3.5-flash-lite]
+// Secrets: GEMINI_API_KEY (obrigatório), GEMINI_MODEL (opcional, padrão gemini-3.5-flash-lite)
+//
+// Para ser rápido, tudo que não depende da IA roda em paralelo com ela:
+//   1) login + formulário + lixeiras + histórico do usuário (juntos)
+//   2) geofence e limites (sem gastar cota da IA com quem não pode registrar)
+//   3) IA  ‖  hash da foto + fotos de outros + temporada + perfil + upload da foto
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import jpeg from 'npm:jpeg-js@0.4.4'
 import { encodeBase64 } from 'jsr:@std/encoding@1/base64'
@@ -43,6 +48,17 @@ function computeDhash(bytes: Uint8Array): string {
   return dhashFromGray(grayGrid(img.data, img.width, img.height))
 }
 
+/** `sub` do JWT (a assinatura já foi validada pelo gateway: verify_jwt = true). */
+function jwtSub(authHeader: string): string | null {
+  try {
+    const payload = authHeader.replace(/^Bearer\s+/i, '').split('.')[1]
+    const claims = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')))
+    return typeof claims.sub === 'string' ? claims.sub : null
+  } catch {
+    return null
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
   if (req.method !== 'POST') return fail('method', 'Use POST', 405)
@@ -53,22 +69,34 @@ Deno.serve(async (req) => {
   const geminiKey = Deno.env.get('GEMINI_API_KEY')
   if (!geminiKey) return fail('config', 'GEMINI_API_KEY não configurada', 500)
 
-  // 1. Autenticação
-  const userClient = createClient(url, anonKey, {
-    global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } },
-  })
-  const { data: userData, error: userError } = await userClient.auth.getUser()
-  if (userError || !userData.user) return fail('auth', 'Faça login novamente', 401)
-  const userId = userData.user.id
+  const authHeader = req.headers.get('Authorization') ?? ''
+  const claimedId = jwtSub(authHeader)
+  if (!claimedId) return fail('auth', 'Faça login novamente', 401)
+  const userClient = createClient(url, anonKey, { global: { headers: { Authorization: authHeader } } })
   const db = createClient(url, serviceKey)
+  const now = new Date()
+  const today = localDate(now)
+  const since30d = new Date(now.getTime() - 30 * 86400000).toISOString()
 
-  // 2. Entrada
-  let form: FormData
-  try {
-    form = await req.formData()
-  } catch {
-    return fail('input', 'Envie multipart/form-data')
-  }
+  // 1. Tudo que não depende de nada, em paralelo
+  const [userRes, form, binsRes, mineRes] = await Promise.all([
+    userClient.auth.getUser(),
+    req.formData().catch(() => null),
+    db.from('bins').select('id, name, lat, lng, radius_m').eq('active', true),
+    db
+      .from('disposals')
+      .select('user_id, bin_id, dhash, signature, created_at, material, status')
+      .eq('user_id', claimedId)
+      .gte('created_at', since30d)
+      .order('created_at', { ascending: false })
+      .limit(1000),
+  ])
+  if (userRes.error || userRes.data.user?.id !== claimedId) return fail('auth', 'Faça login novamente', 401)
+  const userId = claimedId
+  if (!form) return fail('input', 'Envie multipart/form-data')
+  if (binsRes.error) return fail('db', binsRes.error.message, 500)
+  if (mineRes.error) return fail('db', mineRes.error.message, 500)
+
   const image = form.get('image')
   const lat = Number(form.get('lat'))
   const lng = Number(form.get('lng'))
@@ -80,13 +108,8 @@ Deno.serve(async (req) => {
   if (image.size > MAX_IMAGE_BYTES) return fail('input', 'Foto muito grande (máx. 3 MB)')
   if (![lat, lng, accuracy].every(Number.isFinite)) return fail('input', 'Localização inválida')
 
-  const now = new Date()
-  const today = localDate(now)
-
-  // 3. Geofence
-  const { data: bins, error: binsError } = await db.from('bins').select('id, name, lat, lng, radius_m').eq('active', true)
-  if (binsError) return fail('db', binsError.message, 500)
-  const geo = checkGeofence(bins ?? [], { lat, lng }, accuracy, binId)
+  // 2. Geofence e limites (antes de gastar cota da IA)
+  const geo = checkGeofence(binsRes.data ?? [], { lat, lng }, accuracy, binId)
   if (!geo.ok) {
     const nearest = geo.nearest && { name: geo.nearest.bin.name, distance: Math.round(geo.nearest.distance) }
     const message =
@@ -98,129 +121,132 @@ Deno.serve(async (req) => {
     return fail(geo.reason, message, 422, { nearest })
   }
   const bin = geo.bin
-
-  // 4. Limites de uso
-  const since30d = new Date(now.getTime() - 30 * 86400000).toISOString()
-  const { data: mineRows, error: mineError } = await db
-    .from('disposals')
-    .select('user_id, bin_id, dhash, signature, created_at, material, status')
-    .eq('user_id', userId)
-    .gte('created_at', since30d)
-    .order('created_at', { ascending: false })
-    .limit(1000)
-  if (mineError) return fail('db', mineError.message, 500)
-  const mineAll = (mineRows ?? []) as (RecentDisposal & { material: string | null; status: string })[]
+  const mineAll = (mineRes.data ?? []) as (RecentDisposal & { material: string | null; status: string })[]
   // Limites contam todas as tentativas; duplicidade e pontuação só as válidas.
   const limit = checkRateLimits(mineAll, bin.id, now, today, (d) => localDate(d))
-  const mine = mineAll.filter((d) => d.status !== 'rejected')
   if (limit) return fail(limit, REJECT_MESSAGES[limit], 429)
+  const mine = mineAll.filter((d) => d.status !== 'rejected')
 
-  // 5. Foto repetida (hash perceptual)
+  // 3. IA em paralelo com o resto
   const bytes = new Uint8Array(await image.arrayBuffer())
-  let dhash: string
+  const aiAbort = new AbortController()
+  const model = Deno.env.get('GEMINI_MODEL') ?? DEFAULT_GEMINI_MODEL
+  const aiPromise = classifyImage(geminiKey, encodeBase64(bytes), image.type, model, { signal: aiAbort.signal })
+  aiPromise.catch(() => {}) // evita "unhandled rejection" se sairmos antes
+
   try {
-    dhash = computeDhash(bytes)
-  } catch {
-    return fail('input', 'Não foi possível ler a imagem')
-  }
-  const since24h = new Date(now.getTime() - 86400000).toISOString()
-  const { data: othersRows } = await db
-    .from('disposals')
-    .select('user_id, bin_id, dhash, signature, created_at')
-    .neq('user_id', userId)
-    .gte('created_at', since24h)
-    .limit(2000)
-  const photo = checkPhotoHash(dhash, mine, (othersRows ?? []) as RecentDisposal[])
-  if (photo.reject) return fail(photo.reject, REJECT_MESSAGES[photo.reject], 409)
+    const since24h = new Date(now.getTime() - 86400000).toISOString()
+    const imagePath = `${userId}/${crypto.randomUUID()}.jpg`
+    const [othersRes, seasonRes, profileRes, visitsRes] = await Promise.all([
+      db
+        .from('disposals')
+        .select('user_id, bin_id, dhash, signature, created_at')
+        .neq('user_id', userId)
+        .gte('created_at', since24h)
+        .limit(2000),
+      db.rpc('current_season'),
+      db.from('profiles').select('xp, streak, last_disposal_date').eq('id', userId).single(),
+      db
+        .from('disposals')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('bin_id', bin.id)
+        .neq('status', 'rejected'),
+    ])
 
-  // 6. IA
-  let ai
-  try {
-    ai = await classifyImage(geminiKey, encodeBase64(bytes), image.type, Deno.env.get('GEMINI_MODEL') ?? DEFAULT_GEMINI_MODEL)
-  } catch (e) {
-    console.error(e)
-    return fail('ai', 'A IA não respondeu agora. Tente de novo em instantes.', 503)
-  }
-  const signature = aiSignature(ai)
-  const aiCheck = checkAiResult(ai, signature, bin.id, mine, now)
+    let dhash: string
+    try {
+      dhash = computeDhash(bytes)
+    } catch {
+      return fail('input', 'Não foi possível ler a imagem')
+    }
+    const photo = checkPhotoHash(dhash, mine, (othersRes.data ?? []) as RecentDisposal[])
+    if (photo.reject) return fail(photo.reject, REJECT_MESSAGES[photo.reject], 409)
+    const season = seasonRes.data
+    if (seasonRes.error || !season) return fail('db', seasonRes.error?.message ?? 'Sem temporada', 500)
 
-  const { data: season, error: seasonError } = await db.rpc('current_season')
-  if (seasonError || !season) return fail('db', seasonError?.message ?? 'Sem temporada', 500)
+    // a foto sobe enquanto a IA termina (fica guardada também se a IA recusar, para auditoria)
+    const upload = db.storage.from('disposals').upload(imagePath, bytes, { contentType: image.type })
 
-  // 7. Foto no storage (também para rejeições pós-IA, para auditoria)
-  const imagePath = `${userId}/${crypto.randomUUID()}.jpg`
-  const { error: uploadError } = await db.storage.from('disposals').upload(imagePath, bytes, { contentType: image.type })
-  if (uploadError) return fail('storage', uploadError.message, 500)
+    let ai
+    try {
+      ai = await aiPromise
+    } catch (e) {
+      console.error(e)
+      return fail('ai', 'A IA não respondeu agora. Tente de novo em instantes.', 503)
+    }
+    const { error: uploadError } = await upload
+    if (uploadError) return fail('storage', uploadError.message, 500)
 
-  const base = {
-    user_id: userId,
-    bin_id: bin.id,
-    season_id: season.id,
-    image_path: imagePath,
-    dhash,
-    signature,
-    ai,
-    item_label: ai.item_label,
-    material: ai.material,
-    lat,
-    lng,
-    accuracy,
-    source,
-  }
+    const signature = aiSignature(ai)
+    const aiCheck = checkAiResult(ai, signature, bin.id, mine, now)
+    const base = {
+      user_id: userId,
+      bin_id: bin.id,
+      season_id: season.id,
+      image_path: imagePath,
+      dhash,
+      signature,
+      ai,
+      item_label: ai.item_label,
+      material: ai.material,
+      lat,
+      lng,
+      accuracy,
+      source,
+    }
 
-  if (aiCheck.reject) {
-    const code: RejectCode = aiCheck.reject
-    await db.from('disposals').insert({ ...base, status: 'rejected', points: 0, reason: REJECT_MESSAGES[code] })
-    return json({ status: 'rejected', code, message: REJECT_MESSAGES[code], ai })
-  }
+    if (aiCheck.reject) {
+      const code: RejectCode = aiCheck.reject
+      await db.from('disposals').insert({ ...base, status: 'rejected', points: 0, reason: REJECT_MESSAGES[code] })
+      return json({ status: 'rejected', code, message: REJECT_MESSAGES[code], ai })
+    }
 
-  // 8. Pontuação
-  const { data: profile } = await db.from('profiles').select('xp, streak, last_disposal_date').eq('id', userId).single()
-  const todays = mine.filter((d) => localDate(new Date(d.created_at)) === today)
-  const { count: binVisits } = await db
-    .from('disposals')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .eq('bin_id', bin.id)
-    .neq('status', 'rejected')
-  const streak = nextStreak(profile?.last_disposal_date ?? null, today, profile?.streak ?? 0)
-  const score = computePoints({
-    material: ai.material,
-    firstVisitToBin: (binVisits ?? 0) === 0,
-    firstOfDay: todays.length === 0,
-    streakDays: streak,
-    sameMaterialToday: todays.filter((d) => d.material === ai.material).length,
-  })
-
-  const needsReview = aiCheck.needsReview || photo.suspicious
-  const reasons = [...aiCheck.reasons, ...(photo.suspicious ? ['foto parecida com a de outro usuário'] : [])]
-  const status = needsReview ? 'pending' : 'approved'
-
-  const { data: inserted, error: insertError } = await db
-    .from('disposals')
-    .insert({ ...base, status, points: score.points, breakdown: score.breakdown, reason: reasons.join('; ') || null })
-    .select('id')
-    .single()
-  if (insertError) return fail('db', insertError.message, 500)
-
-  await db
-    .from('profiles')
-    .update({
-      xp: (profile?.xp ?? 0) + (status === 'approved' ? score.points : 0),
-      streak,
-      last_disposal_date: today,
+    // 4. Pontuação
+    const profile = profileRes.data
+    const todays = mine.filter((d) => localDate(new Date(d.created_at)) === today)
+    const streak = nextStreak(profile?.last_disposal_date ?? null, today, profile?.streak ?? 0)
+    const score = computePoints({
+      material: ai.material,
+      firstVisitToBin: (visitsRes.count ?? 0) === 0,
+      firstOfDay: todays.length === 0,
+      streakDays: streak,
+      sameMaterialToday: todays.filter((d) => d.material === ai.material).length,
     })
-    .eq('id', userId)
 
-  return json({
-    status,
-    id: inserted.id,
-    points: score.points,
-    breakdown: score.breakdown,
-    ai,
-    bin: { id: bin.id, name: bin.name },
-    correctBin: MATERIAL_INFO[ai.material].binLabel,
-    streak,
-    message: needsReview ? 'Registro enviado para revisão. Os pontos entram quando um admin aprovar.' : undefined,
-  })
+    const needsReview = aiCheck.needsReview || photo.suspicious
+    const reasons = [...aiCheck.reasons, ...(photo.suspicious ? ['foto parecida com a de outro usuário'] : [])]
+    const status = needsReview ? 'pending' : 'approved'
+
+    const [insertRes] = await Promise.all([
+      db
+        .from('disposals')
+        .insert({ ...base, status, points: score.points, breakdown: score.breakdown, reason: reasons.join('; ') || null })
+        .select('id')
+        .single(),
+      db
+        .from('profiles')
+        .update({
+          xp: (profile?.xp ?? 0) + (status === 'approved' ? score.points : 0),
+          streak,
+          last_disposal_date: today,
+        })
+        .eq('id', userId),
+    ])
+    if (insertRes.error) return fail('db', insertRes.error.message, 500)
+
+    return json({
+      status,
+      id: insertRes.data.id,
+      points: score.points,
+      breakdown: score.breakdown,
+      ai,
+      bin: { id: bin.id, name: bin.name },
+      correctBin: MATERIAL_INFO[ai.material].binLabel,
+      streak,
+      message: needsReview ? 'Registro enviado para revisão. Os pontos entram quando um admin aprovar.' : undefined,
+    })
+  } finally {
+    aiAbort.abort() // se saímos antes da IA terminar, cancela a chamada
+  }
 })

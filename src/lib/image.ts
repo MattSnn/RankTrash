@@ -1,7 +1,7 @@
 import { dhashFromGray, grayGrid } from '../../supabase/functions/_shared/antifraud.ts'
 
 /** Desenha a imagem em JPEG, com o maior lado limitado a `maxSide` (o servidor só aceita JPEG). */
-function drawToJpeg(source: CanvasImageSource, width: number, height: number, maxSide = 1280, quality = 0.85): Promise<Blob> {
+function drawToJpeg(source: CanvasImageSource, width: number, height: number, maxSide = 1024, quality = 0.8): Promise<Blob> {
   const scale = Math.min(1, maxSide / Math.max(width, height))
   const canvas = document.createElement('canvas')
   canvas.width = Math.round(width * scale)
