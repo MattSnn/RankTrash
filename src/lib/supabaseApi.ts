@@ -1,4 +1,4 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js'
 import { fileToJpeg } from './image'
 import { formatPersonName, looksLikeEmailName } from './names'
 import {
@@ -46,6 +46,43 @@ export function createSupabaseApi(url: string, anonKey: string): Api {
     },
   })
 
+  const MS_START = `${url}/functions/v1/ms-auth/start`
+  const msStart = (returnTo: string) => `${MS_START}?return=${encodeURIComponent(returnTo)}`
+
+  /** Login antigo pelo provedor Azure do Supabase (usado se a função ms-auth ainda não estiver configurada). */
+  async function nativeMicrosoftLogin(client: SupabaseClient, redirectTo: string) {
+    const { error } = await client.auth.signInWithOAuth({ provider: 'azure', options: { ...MICROSOFT_LOGIN, redirectTo } })
+    if (error) throw new Error(error.message)
+  }
+
+  /** Lê e limpa da URL o token da ms-auth (#ms_token=...) ou o aviso de que ela não está configurada. */
+  function takeMsReturn(): { token: string | null; unavailable: boolean } {
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+    const query = new URLSearchParams(window.location.search)
+    const token = hash.get('ms_token')
+    const unavailable = query.get('ms_unavailable') === '1'
+    if (token || unavailable) {
+      query.delete('ms_unavailable')
+      const qs = query.toString()
+      window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : ''))
+    }
+    return { token, unavailable }
+  }
+
+  // Volta do login (fora da página /entrar, que tem cliente próprio): troca o token pela sessão antes de tudo.
+  const msReturn: Promise<void> =
+    window.location.pathname === HANDOFF_PATH
+      ? Promise.resolve()
+      : (async () => {
+          const { token, unavailable } = takeMsReturn()
+          if (token) {
+            const { error } = await sb.auth.verifyOtp({ token_hash: token, type: 'magiclink' })
+            if (error) console.error('login', error.message)
+          } else if (unavailable) {
+            await nativeMicrosoftLogin(sb, window.location.origin)
+          }
+        })()
+
   /** Cliente da página /entrar: sessão só na aba (sessionStorage) e sem renovar, porque ela é entregue ao app. */
   function bridgeClient(): SupabaseClient {
     return createClient(url, anonKey, {
@@ -84,6 +121,7 @@ export function createSupabaseApi(url: string, anonKey: string): Api {
     demo: false,
 
     async getSessionEmail() {
+      await msReturn
       const { data } = await sb.auth.getSession()
       return data.session?.user.email ?? null
     },
@@ -92,11 +130,8 @@ export function createSupabaseApi(url: string, anonKey: string): Api {
       return () => data.subscription.unsubscribe()
     },
     async signInWithMicrosoft() {
-      const { error } = await sb.auth.signInWithOAuth({
-        provider: 'azure',
-        options: { ...MICROSOFT_LOGIN, redirectTo: window.location.origin },
-      })
-      if (error) throw new Error(error.message)
+      // login próprio (Edge Function ms-auth): funciona também para contas sem a declaração "email"
+      window.location.href = msStart(`${window.location.origin}/`)
     },
     async startExternalLogin() {
       const secret = randomSecret()
@@ -127,18 +162,26 @@ export function createSupabaseApi(url: string, anonKey: string): Api {
     },
     async completeExternalLogin(handoffId) {
       const bridge = bridgeClient()
-      const code = new URLSearchParams(window.location.search).get('code')
-      if (!code) {
-        const { error } = await bridge.auth.signInWithOAuth({
-          provider: 'azure',
-          options: { ...MICROSOFT_LOGIN, redirectTo: `${window.location.origin}${HANDOFF_PATH}?h=${handoffId}` },
-        })
+      const here = `${window.location.origin}${HANDOFF_PATH}?h=${handoffId}`
+      const { token, unavailable } = takeMsReturn()
+      const code = new URLSearchParams(window.location.search).get('code') // volta do login antigo
+      let session: Session | null
+      if (token) {
+        const { data, error } = await bridge.auth.verifyOtp({ token_hash: token, type: 'magiclink' })
         if (error) throw new Error(error.message)
+        session = data.session
+      } else if (code) {
+        const { data, error } = await bridge.auth.exchangeCodeForSession(code)
+        if (error) throw new Error(error.message)
+        session = data.session
+      } else if (unavailable) {
+        await nativeMicrosoftLogin(bridge, here)
+        return { kind: 'redirecting' }
+      } else {
+        window.location.href = msStart(here)
         return { kind: 'redirecting' }
       }
-      const { data: exchanged, error: exchangeError } = await bridge.auth.exchangeCodeForSession(code)
-      const session = exchanged.session
-      if (exchangeError || !session) throw new Error(exchangeError?.message ?? 'Não foi possível entrar.')
+      if (!session) throw new Error('Não foi possível entrar.')
       const { data: shownCode, error } = await bridge.rpc('handoff_complete', {
         p_id: handoffId,
         p_refresh_token: session.refresh_token,
