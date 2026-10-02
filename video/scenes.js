@@ -541,8 +541,8 @@ scene('cost', 'CUSTO E ESCALA', (root) => {
     tf(big, { o: P(lt, 0, 0.1), s: 1 + bump(lt, 1.0, 0.3) * 0.12 })
     tf(sub, { o: ease(lt, 0.9, 1.2) })
     chips.forEach((ch, i) => { ch.style.top = 520 + i * 100 + 'px'; tf(ch, { o: P(lt, at[i] - 0.1, at[i]), x: (1 - ease(lt, at[i] - 0.1, at[i] + 0.3, E.back)) * -160 }) })
-    camp.forEach((q, i) => { const t0 = i === 14 ? 0.3 : at[2] - 0.2 + q.d; tf(q.e, { ...pop(lt, t0, 0.35), y: -bump(lt, t0 + 0.4, 0.3) * 20 }) })
-    tf(fac, { o: ease(lt, 0.5, 0.7) })
+    camp.forEach((q, i) => { const t0 = i === 14 ? 0.3 : at[1] + q.d * 1.6; tf(q.e, { ...pop(lt, t0, 0.35), y: -bump(lt, t0 + 0.4, 0.3) * 20 }) })
+    tf(fac, { o: ease(lt, 0.5, 0.7) * (1 - ease(lt, at[1], at[1] + 0.3)) })
   }
 })
 

@@ -1,378 +1,324 @@
 [
  {
   "key": "hook",
-  "dur": 10.103,
+  "dur": 10.714,
   "caps": [
    {
     "t": 0.0,
-    "d": 3.78,
-    "text": "Todos os dias, milhares de pessoas passam pelo campus da Facens."
+    "d": 6.45,
+    "text": "Sabe aquele momento em que você termina o lanche, para na frente das lixeiras coloridas… e trava?"
    },
    {
-    "t": 4.2,
-    "d": 4.154,
-    "text": "E, em algum momento, cada uma delas para diante de uma lixeira, e se pergunta:"
-   },
-   {
-    "t": 8.654,
-    "d": 1.449,
-    "text": "em qual delas isso vai?"
+    "t": 6.5,
+    "d": 4.164,
+    "text": "Azul, vermelha, amarela… Onde vai essa lata?"
    }
   ]
  },
  {
   "key": "problem",
-  "dur": 14.783,
+  "dur": 14.286,
   "caps": [
    {
     "t": 0.0,
-    "d": 4.698,
-    "text": "Quando a resposta é errada, um único item pode contaminar um lote inteiro de recicláveis."
+    "d": 5.4,
+    "text": "Pois é. Um único item no lugar errado pode contaminar um lote inteiro de recicláveis."
    },
    {
-    "t": 5.118,
-    "d": 3.933,
-    "text": "No Brasil, menos de 5% dos resíduos são reciclados."
+    "t": 5.45,
+    "d": 3.545,
+    "text": "E no Brasil, menos de 5% do lixo é reciclado."
    },
    {
-    "t": 9.47,
-    "d": 1.976,
-    "text": "E o problema não é falta de lixeira."
-   },
-   {
-    "t": 11.866,
-    "d": 2.917,
-    "text": "É falta de informação, de hábito, e de motivação."
+    "t": 9.045,
+    "d": 5.191,
+    "text": "Lixeira não falta. O que falta é informação, hábito… e um bom motivo."
    }
   ]
  },
  {
   "key": "reveal",
-  "dur": 7.892,
+  "dur": 5.354,
   "caps": [
    {
     "t": 0.0,
-    "d": 2.371,
-    "text": "Foi para mudar isso que nasceu o RankTrash:"
+    "d": 2.93,
+    "text": "E se jogar o lixo fora fosse… um jogo?"
    },
    {
-    "t": 2.671,
-    "d": 5.222,
-    "text": "o aplicativo da campanha Lixo Zero da Facens, que transforma o descarte correto em um jogo."
+    "t": 2.98,
+    "d": 2.324,
+    "text": "Apresentamos: o RankTrash!"
+   }
+  ]
+ },
+ {
+  "key": "upx",
+  "dur": 7.944,
+  "caps": [
+   {
+    "t": 0.0,
+    "d": 7.894,
+    "text": "Esse é o nosso projeto de UPX, do segundo semestre de Engenharia da Computação da Facens, pensado para apoiar a campanha Lixo Zero."
    }
   ]
  },
  {
   "key": "steps",
-  "dur": 9.972,
+  "dur": 12.223,
   "caps": [
    {
     "t": 0.0,
-    "d": 1.204,
-    "text": "A ideia é simples."
+    "d": 10.945,
+    "text": "Funciona assim: você vai até uma lixeira, tira uma foto do resíduo, a inteligência artificial reconhece o que é, o GPS confirma onde você está… e pronto:"
    },
    {
-    "t": 1.624,
-    "d": 8.348,
-    "text": "Você vai até uma lixeira, fotografa o resíduo, a inteligência artificial identifica o item e o material, o GPS confirma a lixeira, e você ganha pontos."
+    "t": 10.995,
+    "d": 1.178,
+    "text": "pontos na conta!"
    }
   ]
  },
  {
   "key": "microsoft",
-  "dur": 21.955,
+  "dur": 19.693,
   "caps": [
    {
     "t": 0.0,
-    "d": 2.736,
-    "text": "E tudo começa com a conta que todo aluno já tem."
+    "d": 3.27,
+    "text": "Pra entrar, nada de cadastro nem senha nova."
    },
    {
-    "t": 3.156,
-    "d": 2.969,
-    "text": "O RankTrash é integrado à Microsoft da Facens."
+    "t": 3.32,
+    "d": 5.93,
+    "text": "O login é com a sua conta Microsoft da Facens, direto na página oficial da Microsoft."
    },
    {
-    "t": 6.545,
-    "d": 4.254,
-    "text": "O login acontece na página oficial da Microsoft, com o e-mail institucional."
+    "t": 9.3,
+    "d": 7.28,
+    "text": "Só entra quem tem e-mail @facens.br, e a sua senha nunca passa pelo app. Ou seja:"
    },
    {
-    "t": 11.22,
-    "d": 1.924,
-    "text": "Sem senha nova, e sem cadastro."
-   },
-   {
-    "t": 13.563,
-    "d": 4.69,
-    "text": "Só entram contas @facens.br, e a senha nunca passa pelo aplicativo."
-   },
-   {
-    "t": 18.674,
-    "d": 3.281,
-    "text": "Assim, cada ponto do ranking pertence a um aluno de verdade."
+    "t": 16.63,
+    "d": 3.013,
+    "text": "cada ponto do ranking é de um aluno de verdade."
    }
   ]
  },
  {
   "key": "map",
-  "dur": 14.59,
+  "dur": 10.644,
   "caps": [
    {
     "t": 0.0,
-    "d": 3.957,
-    "text": "Lá dentro, o mapa do campus mostra todas as lixeiras cadastradas."
+    "d": 2.93,
+    "text": "No mapa, aparecem todas as lixeiras do campus."
    },
    {
-    "t": 4.377,
-    "d": 3.999,
-    "text": "As vermelhas ainda não foram exploradas, e valem bônus na primeira visita."
+    "t": 2.98,
+    "d": 3.75,
+    "text": "As vermelhas ainda não foram exploradas, e valem bônus!"
    },
    {
-    "t": 8.796,
-    "d": 1.725,
-    "text": "As verdes, você já usou."
-   },
-   {
-    "t": 10.941,
-    "d": 3.65,
-    "text": "E o letreiro mostra, em tempo real, o que o campus está descartando."
+    "t": 6.78,
+    "d": 3.814,
+    "text": "E o letreiro mostra, ao vivo, tudo o que a galera está descartando."
    }
   ]
  },
  {
   "key": "camera",
-  "dur": 9.693,
+  "dur": 7.569,
   "caps": [
    {
     "t": 0.0,
-    "d": 3.264,
-    "text": "Na hora de descartar, a câmera abre direto no aplicativo."
+    "d": 2.14,
+    "text": "Achou a lixeira? Abre a câmera."
    },
    {
-    "t": 3.684,
-    "d": 6.009,
-    "text": "O GPS acompanha a sua posição, e mostra a lixeira mais próxima, com a distância e a precisão do sinal."
+    "t": 2.19,
+    "d": 5.329,
+    "text": "O GPS já mostra qual lixeira está mais perto, a que distância, e com qual precisão."
    }
   ]
  },
  {
   "key": "ai",
-  "dur": 9.298,
+  "dur": 9.146,
   "caps": [
    {
     "t": 0.0,
-    "d": 1.995,
-    "text": "Um toque, e a foto vai para análise."
+    "d": 4.805,
+    "text": "Clique! A inteligência artificial do Gemini analisa a foto em segundos:"
    },
    {
-    "t": 2.415,
-    "d": 6.883,
-    "text": "A inteligência artificial, o Gemini, do Google, reconhece o item, o material, e até o estado da embalagem, em poucos segundos."
+    "t": 4.855,
+    "d": 4.241,
+    "text": "qual é o item, qual é o material, e até se a lata está amassada."
    }
   ]
  },
  {
   "key": "result",
-  "dur": 14.824,
+  "dur": 11.092,
   "caps": [
    {
     "t": 0.0,
-    "d": 1.272,
-    "text": "Descarte validado!"
+    "d": 3.145,
+    "text": "Descarte validado! Mais 15 pontos."
    },
    {
-    "t": 1.692,
-    "d": 1.919,
-    "text": "Lata de refrigerante, alumínio."
+    "t": 3.195,
+    "d": 4.255,
+    "text": "E o app ainda ensina: lata vai na lixeira amarela, a de metal."
    },
    {
-    "t": 4.031,
-    "d": 3.254,
-    "text": "E o aplicativo ensina: vai na lixeira amarela, de metal."
-   },
-   {
-    "t": 7.705,
-    "d": 3.476,
-    "text": "E ainda dá a dica: amasse a lata, para ocupar menos espaço."
-   },
-   {
-    "t": 11.601,
-    "d": 3.223,
-    "text": "Cada descarte vira uma pequena aula de educação ambiental."
+    "t": 7.5,
+    "d": 3.542,
+    "text": "Cada descarte vira uma mini aula de educação ambiental."
    }
   ]
  },
  {
   "key": "antifraud",
-  "dur": 16.283,
+  "dur": 13.456,
   "caps": [
    {
     "t": 0.0,
-    "d": 3.296,
-    "text": "Para o jogo ser justo, existe antifraude em várias camadas."
+    "d": 2.355,
+    "text": "Ah, e nem adianta tentar trapacear!"
    },
    {
-    "t": 3.716,
-    "d": 2.648,
-    "text": "A foto precisa ser tirada na hora, pela câmera."
+    "t": 2.405,
+    "d": 2.59,
+    "text": "Foto repetida? O app reconhece."
    },
    {
-    "t": 6.785,
-    "d": 3.515,
-    "text": "Fotos repetidas são reconhecidas pela impressão digital da imagem."
+    "t": 5.045,
+    "d": 2.335,
+    "text": "Foto da tela? Recusada."
    },
    {
-    "t": 10.719,
-    "d": 5.564,
-    "text": "Fotos de tela são recusadas, existem limites por dia, e os pontos são calculados só no servidor."
+    "t": 7.43,
+    "d": 5.976,
+    "text": "Tem limite por dia, os pontos são calculados no servidor, e o top 10 passa por auditoria."
    }
   ]
  },
  {
   "key": "ranking",
-  "dur": 10.234,
+  "dur": 8.177,
   "caps": [
    {
     "t": 0.0,
-    "d": 3.149,
-    "text": "Os pontos levam ao ranking mensal, com prêmios para o pódio."
+    "d": 1.87,
+    "text": "Aí começa a competição:"
    },
    {
-    "t": 3.569,
-    "d": 6.666,
-    "text": "Tem também a guerra de cursos, em que cada curso da Facens disputa o topo, e o ranking da semana, para quem acabou de chegar."
+    "t": 1.92,
+    "d": 6.207,
+    "text": "ranking mensal com prêmios, guerra entre os cursos, e o ranking da semana, pra quem acabou de chegar."
    }
   ]
  },
  {
   "key": "profile",
-  "dur": 9.057,
+  "dur": 9.63,
   "caps": [
    {
     "t": 0.0,
-    "d": 5.426,
-    "text": "No perfil, o aluno acompanha o seu nível, a sequência de dias, as conquistas, e o seu impacto:"
+    "d": 7.21,
+    "text": "No perfil, você sobe de nível, mantém a sequência de dias, desbloqueia conquistas, e vê o seu impacto real:"
    },
    {
-    "t": 5.726,
-    "d": 3.33,
-    "text": "quantos itens, e quantos quilos, deixaram de ir para o aterro."
+    "t": 7.26,
+    "d": 2.32,
+    "text": "quantos quilos você tirou do aterro."
    }
   ]
  },
  {
   "key": "admin",
-  "dur": 11.296,
+  "dur": 8.191,
   "caps": [
    {
     "t": 0.0,
-    "d": 3.744,
-    "text": "Para a equipe do Lixo Zero, existe um painel administrativo completo:"
+    "d": 2.545,
+    "text": "E pra quem organiza, tem um painel completo:"
    },
    {
-    "t": 4.044,
-    "d": 7.252,
-    "text": "cadastro das lixeiras direto no mapa, fila de revisão, auditoria das fotos do top 10 antes da premiação, e gestão de usuários."
+    "t": 2.595,
+    "d": 5.546,
+    "text": "lixeiras no mapa, fila de revisão, auditoria do top 10, e gestão de usuários."
    }
   ]
  },
  {
   "key": "data",
-  "dur": 16.819,
+  "dur": 11.9,
   "caps": [
    {
     "t": 0.0,
-    "d": 2.51,
-    "text": "E aqui está um dos maiores valores do projeto:"
+    "d": 2.195,
+    "text": "E o melhor de tudo: dados."
    },
    {
-    "t": 2.81,
-    "d": 0.534,
-    "text": "dados."
+    "t": 2.245,
+    "d": 4.335,
+    "text": "Cada descarte registra o que foi jogado fora, onde, e quando."
    },
    {
-    "t": 3.764,
-    "d": 3.607,
-    "text": "Cada descarte registra o material, a lixeira, o horário e a foto."
-   },
-   {
-    "t": 7.791,
-    "d": 4.018,
-    "text": "Pela primeira vez, a Facens pode saber o que é descartado, onde, e quando."
-   },
-   {
-    "t": 12.228,
-    "d": 4.591,
-    "text": "E usar essa informação para planejar a coleta, e medir o resultado de cada campanha."
+    "t": 6.63,
+    "d": 5.22,
+    "text": "Com isso, dá pra planejar a coleta, e medir de verdade o resultado de cada campanha."
    }
   ]
  },
  {
   "key": "impact",
-  "dur": 19.682,
+  "dur": 12.087,
   "caps": [
    {
     "t": 0.0,
-    "d": 3.965,
-    "text": "Para a Facens, o RankTrash é inovação a serviço da sustentabilidade:"
+    "d": 3.34,
+    "text": "Para a Facens, é inovação feita pelos próprios alunos."
    },
    {
-    "t": 4.265,
-    "d": 2.144,
-    "text": "feito por alunos, para o próprio campus."
+    "t": 3.39,
+    "d": 3.075,
+    "text": "Para a comunidade, é um hábito que vai junto pra casa."
    },
    {
-    "t": 6.83,
-    "d": 3.628,
-    "text": "Para a comunidade, é um hábito que começa na faculdade e vai para casa."
-   },
-   {
-    "t": 10.878,
-    "d": 6.47,
-    "text": "E para o mundo, é uma contribuição concreta aos Objetivos de Desenvolvimento Sustentável da ONU, como o ODS 12:"
-   },
-   {
-    "t": 17.648,
-    "d": 2.034,
-    "text": "consumo e produção responsáveis."
+    "t": 6.515,
+    "d": 5.522,
+    "text": "E para o mundo, é um passo concreto rumo aos Objetivos de Desenvolvimento Sustentável da ONU."
    }
   ]
  },
  {
   "key": "cost",
-  "dur": 11.389,
+  "dur": 8.083,
   "caps": [
    {
     "t": 0.0,
-    "d": 1.787,
-    "text": "Tudo isso com custo quase zero."
-   },
-   {
-    "t": 2.207,
-    "d": 9.182,
-    "text": "O aplicativo roda em serviços gratuitos, funciona em qualquer celular, sem precisar de loja de aplicativos, e pode ser levado para qualquer universidade."
+    "d": 8.033,
+    "text": "Tudo isso com custo praticamente zero, em qualquer celular, sem baixar nada da loja, e pronto pra ser levado a qualquer universidade."
    }
   ]
  },
  {
   "key": "close",
-  "dur": 6.762,
+  "dur": 7.877,
   "caps": [
    {
     "t": 0.0,
-    "d": 0.85,
-    "text": "RankTrash."
+    "d": 4.4,
+    "text": "RankTrash: descarte certo, ganhe pontos, e suba no ranking!"
    },
    {
-    "t": 1.27,
-    "d": 3.468,
-    "text": "Descarte certo, ganhe pontos, e suba no ranking da Facens."
-   },
-   {
-    "t": 5.158,
-    "d": 1.604,
-    "text": "Juntos, rumo ao Lixo Zero."
+    "t": 4.45,
+    "d": 3.377,
+    "text": "Saiba mais em ranktrash.eco.br."
    }
   ]
  }

@@ -22,12 +22,7 @@ SR = 24000
 HERE = os.path.dirname(os.path.abspath(__file__))
 os.makedirs(OUT, exist_ok=True)
 
-STYLE = (
-    'Você é a voz de um vídeo de apresentação de um app universitário, gravado por um locutor brasileiro profissional. '
-    'Leia em português do Brasil, com energia, carisma e um sorriso na voz, ritmo dinâmico e natural de vídeo de lançamento, '
-    'com pausas expressivas nas reticências e ênfase nas palavras importantes. Pronuncie "RankTrash" em inglês (rénk-trésh), '
-    '"Gemini" como djêmini e "UPX" como u-pê-xis. Leia exatamente o texto, sem acrescentar nada:\n\n'
-)
+STYLE = 'Say in Brazilian Portuguese, like an energetic, charismatic and cheerful professional narrator of a fun product launch video, with a smile in the voice and a fast, dynamic pace: '
 
 DISP = [('arroba facens ponto bê érre', '@facens.br'), ('ranktrash ponto eco ponto bê érre', 'ranktrash.eco.br'),
         ('top dez', 'top 10'), ('menos de cinco por cento', 'menos de 5%'), ('Mais quinze pontos', 'Mais 15 pontos')]
