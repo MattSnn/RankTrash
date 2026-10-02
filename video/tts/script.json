@@ -1,0 +1,19 @@
+[
+["hook","Todos os dias, milhares de pessoas passam pelo campus da Facens. E, em algum momento, cada uma delas para diante de uma lixeira, e se pergunta: em qual delas isso vai?"],
+["problem","Quando a resposta é errada, um único item pode contaminar um lote inteiro de recicláveis. No Brasil, menos de cinco por cento dos resíduos são reciclados. E o problema não é falta de lixeira. É falta de informação, de hábito, e de motivação."],
+["reveal","Foi para mudar isso que nasceu o Ranki Tréxi: o aplicativo da campanha Lixo Zero da Facens, que transforma o descarte correto em um jogo."],
+["steps","A ideia é simples. Você vai até uma lixeira, fotografa o resíduo, a inteligência artificial identifica o item e o material, o GPS confirma a lixeira, e você ganha pontos."],
+["microsoft","E tudo começa com a conta que todo aluno já tem. O Ranki Tréxi é integrado à Maicrossóft da Facens. O login acontece na página oficial da Maicrossóft, com o e-mail institucional. Sem senha nova, e sem cadastro. Só entram contas arroba facens ponto bê érre, e a senha nunca passa pelo aplicativo. Assim, cada ponto do rânkin pertence a um aluno de verdade."],
+["map","Lá dentro, o mapa do campus mostra todas as lixeiras cadastradas. As vermelhas ainda não foram exploradas, e valem bônus na primeira visita. As verdes, você já usou. E o letreiro mostra, em tempo real, o que o campus está descartando."],
+["camera","Na hora de descartar, a câmera abre direto no aplicativo. O GPS acompanha a sua posição, e mostra a lixeira mais próxima, com a distância e a precisão do sinal."],
+["ai","Um toque, e a foto vai para análise. A inteligência artificial, o Djêmini, do Gugou, reconhece o item, o material, e até o estado da embalagem, em poucos segundos."],
+["result","Descarte validado! Lata de refrigerante, alumínio. E o aplicativo ensina: vai na lixeira amarela, de metal. E ainda dá a dica: amasse a lata, para ocupar menos espaço. Cada descarte vira uma pequena aula de educação ambiental."],
+["antifraud","Para o jogo ser justo, existe antifraude em várias camadas. A foto precisa ser tirada na hora, pela câmera. Fotos repetidas são reconhecidas pela impressão digital da imagem. Fotos de tela são recusadas, existem limites por dia, e os pontos são calculados só no servidor."],
+["ranking","Os pontos levam ao rânkin mensal, com prêmios para o pódio. Tem também a guerra de cursos, em que cada curso da Facens disputa o topo, e o rânkin da semana, para quem acabou de chegar."],
+["profile","No perfil, o aluno acompanha o seu nível, a sequência de dias, as conquistas, e o seu impacto: quantos itens, e quantos quilos, deixaram de ir para o aterro."],
+["admin","Para a equipe do Lixo Zero, existe um painel administrativo completo: cadastro das lixeiras direto no mapa, fila de revisão, auditoria das fotos do top dez antes da premiação, e gestão de usuários."],
+["data","E aqui está um dos maiores valores do projeto: dados. Cada descarte registra o material, a lixeira, o horário e a foto. Pela primeira vez, a Facens pode saber o que é descartado, onde, e quando. E usar essa informação para planejar a coleta, e medir o resultado de cada campanha."],
+["impact","Para a Facens, o Ranki Tréxi é inovação a serviço da sustentabilidade: feito por alunos, para o próprio campus. Para a comunidade, é um hábito que começa na faculdade e vai para casa. E para o mundo, é uma contribuição concreta aos Objetivos de Desenvolvimento Sustentável da ONU, como o ó dê ésse doze: consumo e produção responsáveis."],
+["cost","Tudo isso com custo quase zero. O aplicativo roda em serviços gratuitos, funciona em qualquer celular, sem precisar de loja de aplicativos, e pode ser levado para qualquer universidade."],
+["close","Ranki Tréxi. Descarte certo, ganhe pontos, e suba no rânkin da Facens. Juntos, rumo ao Lixo Zero."]
+]
