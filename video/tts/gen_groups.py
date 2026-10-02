@@ -16,15 +16,17 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import gen_gemini as g  # noqa: E402
 
 OUT = sys.argv[1]
-g.VOICE = sys.argv[2] if len(sys.argv) > 2 else 'Puck'
+g.VOICE = sys.argv[2] if len(sys.argv) > 2 else 'Charon'
 g.MODEL = 'gemini-2.5-flash-preview-tts'
-g.STYLE = ('Say in Brazilian Portuguese, like an energetic, charismatic and cheerful narrator of a fun product launch video, '
-           'with a smile in the voice and a dynamic pace. Pause briefly between paragraphs: ')
+g.STYLE = ('Say in Brazilian Portuguese, with a deep, confident, firm adult male narrator voice, like a professional TV commercial announcer: '
+           'energetic and charismatic but grounded, with a dynamic pace. Pause briefly between paragraphs: ')
 SR = g.SR
 GROUPS = [['hook', 'problem', 'reveal', 'upx'], ['steps', 'microsoft', 'map', 'camera'],
           ['ai', 'result', 'antifraud', 'ranking', 'profile'], ['admin', 'data', 'impact', 'cost', 'close']]
 script = dict(json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'script2.json'))))
 os.makedirs(OUT, exist_ok=True)
+# cortes conferidos à mão (reconhecimento de fala) quando a detecção de pausas erra; por voz/grupo
+CUTS_OVERRIDE = json.loads(os.environ.get('CUTS_OVERRIDE', '{}'))
 
 
 def gaps_of(x, min_len=0.22):
@@ -64,6 +66,7 @@ for gi, keys in enumerate(GROUPS):
         # prefer long pauses near the expected position (scene breaks are paragraph pauses)
         cand = [(abs(c - target) / 2.0 - L * 3, c) for c, L in gaps if (not cuts or c > cuts[-1] + 1.0) and abs(c - target) < 6]
         cuts.append(min(cand)[1] if cand else target)
+    cuts = CUTS_OVERRIDE.get(str(gi), cuts)
     bounds = [0.0] + cuts + [dur]
     for i, k in enumerate(keys):
         seg = x[int(bounds[i] * SR): int(bounds[i + 1] * SR)]

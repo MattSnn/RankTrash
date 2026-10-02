@@ -148,11 +148,11 @@ scene('upx', 'NOSSO PROJETO', (root) => {
   const l2 = el('div', 'abs h3', root, 'Facens · apoio à campanha Lixo Zero', { left: '172px', top: '560px', fontWeight: 500, color: '#8fb2d9' })
   const note = el('div', 'abs pix', root, 'PROJETO ACADÊMICO · AINDA NÃO É UM APP OFICIAL DA FACENS', { left: '172px', top: '660px', fontSize: '14px', color: '#8fb2d9' })
   // team "player select"
-  const COL = ['#f4a259', '#8fe39a', '#7cc3f5', '#f5c518', '#ff6b62', '#fde8b0']
-  const team = COL.map((c, i) => el('div', 'abs', root, `<div style="width:150px;height:150px;background:#0b1e3a;border:5px solid ${c};box-shadow:6px 6px 0 #0a0f1f;display:grid;place-items:center">${icon('user', 80, c)}</div><div class="pix" style="margin-top:10px;text-align:center;font-size:13px;color:${c}">P${i + 1}</div>`, { left: 1120 + (i % 3) * 190 + 'px', top: 230 + Math.floor(i / 3) * 230 + 'px' }))
+  const COL = ['#f4a259', '#8fe39a', '#7cc3f5', '#f5c518', '#ff6b62', '#fde8b0', '#c9a7ff']
+  const team = COL.map((c, i) => el('div', 'abs', root, `<div style="width:136px;height:136px;background:#0b1e3a;border:5px solid ${c};box-shadow:6px 6px 0 #0a0f1f;display:grid;place-items:center">${icon('user', 72, c)}</div><div class="pix" style="margin-top:10px;text-align:center;font-size:13px;color:${c}">P${i + 1}</div>`, { left: 1050 + (i % 4) * 172 + 'px', top: 240 + Math.floor(i / 4) * 220 + 'px' }))
   const ready = el('div', 'abs big-pix', root, 'EQUIPE PRONTA!', { left: '1125px', top: '730px', fontSize: '28px', color: '#8fe39a' })
   const tS = WT('upx', 'segundo semestre'), tF = WT('upx', 'Facens'), tL = WT('upx', 'Lixo Zero')
-  cue(0.15,'slam',0.8); for(let i=0;i<6;i++) cue(0.4+i*0.12,'blip',0.4); cue(2.3,'powerup',0.6); cue(tS,'swish',0.5)
+  cue(0.15,'slam',0.8); for(let i=0;i<7;i++) cue(0.4+i*0.12,'blip',0.4); cue(2.3,'powerup',0.6); cue(tS,'swish',0.5)
   return (lt) => {
     tf(badge, { ...pop(lt, 0.15, 0.5), r: (1 - ease(lt, 0.15, 0.6)) * -12 })
     tf(l1, { o: ease(lt, tS - 0.1, tS + 0.2), x: (1 - ease(lt, tS - 0.1, tS + 0.4, E.back)) * -80 })
@@ -572,14 +572,14 @@ scene('close', '', (root) => {
 scene('credits', '', (root) => {
   const head = el('div', 'abs big-pix', root, 'HIGH SCORES', { left: '140px', top: '120px', fontSize: '60px', color: '#f5c518' })
   const sub = el('div', 'abs pix', root, 'EQUIPE RANKTRASH', { left: '144px', top: '210px', fontSize: '20px', color: '#8fb2d9' })
-  const NAMES = ['Mateus Sonnenberg', 'Pedro Wagner', 'Jhonny Walter', 'Rodrigo Vieira', 'Samuel Barbosa', 'Daniel Moroni']
-  const COL = ['#f4a259', '#8fe39a', '#7cc3f5', '#f5c518', '#ff6b62', '#fde8b0']
-  const rows = NAMES.map((n, i) => el('div', 'abs hs-row', root, `<span class="rk">${i + 1}º</span><span class="nm" style="color:${COL[i]}"></span><span class="sc"></span>`, { left: '144px', top: 270 + i * 82 + 'px', width: '980px', borderBottom: '3px dashed rgba(124,195,245,.25)' }))
+  const NAMES = ['Mateus Sonnenberg', 'Pedro Wagner', 'Jhonny Walter', 'Rodrigo Vieira', 'Samuel Barbosa', 'Daniel Morone', 'João Pedro Oliveira']
+  const COL = ['#f4a259', '#8fe39a', '#7cc3f5', '#f5c518', '#ff6b62', '#fde8b0', '#c9a7ff']
+  const rows = NAMES.map((n, i) => el('div', 'abs hs-row', root, `<span class="rk">${i + 1}º</span><span class="nm" style="color:${COL[i]}"></span><span class="sc"></span>`, { left: '144px', top: 262 + i * 80 + 'px', width: '980px', borderBottom: '3px dashed rgba(124,195,245,.25)' }))
   const qr = el('div', 'abs', root, `<div style="padding:14px;background:#fff;box-shadow:10px 10px 0 #0a0f1f">${QR_SVG(250)}</div>`, { left: '1360px', top: '200px' })
   const url = el('div', 'abs', root, 'ranktrash.eco.br', { left: '1300px', top: '510px', width: '398px', textAlign: 'center', font: '700 40px Grotesk', color: '#8fe39a' })
   const foot = el('div', 'abs', root, `<div class="pix" style="font-size:17px;color:#fde8b0;line-height:1.9">PROJETO UPX · 2º SEMESTRE<br>ENGENHARIA DA COMPUTAÇÃO · FACENS</div><div style="font:400 20px Inter;color:#8fb2d9;margin-top:10px">Projeto acadêmico de alunos. Ainda não é um app oficial da Facens.</div>`, { left: '1250px', top: '600px', width: '560px', textAlign: 'center' })
   const m = Mascot(root, 100, 1740, 840, 'left')
-  cue(0.1,'coin',0.8); for(let i=0;i<6;i++) cue(0.6+i*0.45,'blip',0.6); cue(3.6,'jump',0.6); cue(4.0,'success',0.7)
+  cue(0.1,'coin',0.8); for(let i=0;i<7;i++) cue(0.6+i*0.45,'blip',0.6); cue(4.0,'jump',0.6); cue(4.4,'success',0.7)
   return (lt) => {
     tf(head, { o: lt > 0.1 && (lt > 1.2 || Math.floor(lt * 6) % 2 === 0) ? 1 : 0 })
     tf(sub, { o: ease(lt, 0.3, 0.5) })
@@ -594,10 +594,10 @@ scene('credits', '', (root) => {
     tf(url, { o: ease(lt, 0.7, 0.9) })
     tf(foot, { o: ease(lt, 1.0, 1.3) })
     m.set('happy', lt)
-    tf(m.box, { ...pop(lt, 3.6, 0.4), y: -Math.abs(Math.sin(lt * 5)) * 20 })
-    m.say('VALEU!', env(lt, 4.0, 99, 0.2, 0.1))
+    tf(m.box, { ...pop(lt, 4.0, 0.4), y: -Math.abs(Math.sin(lt * 5)) * 20 })
+    m.say('VALEU!', env(lt, 4.4, 99, 0.2, 0.1))
   }
-}, { dur: 8.5 })
+}, { dur: 9 })
 
 // =====================================================================================
 // ENGINE
