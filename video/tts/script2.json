@@ -1,0 +1,20 @@
+[
+["hook", "Sabe aquele momento em que você termina o lanche, para na frente das lixeiras coloridas… e trava? Azul, vermelha, amarela… Onde vai essa lata?"],
+["problem", "Pois é. Um único item no lugar errado pode contaminar um lote inteiro de recicláveis. E no Brasil, menos de cinco por cento do lixo é reciclado. Lixeira não falta. O que falta é informação, hábito… e um bom motivo."],
+["reveal", "E se jogar o lixo fora fosse… um jogo? Apresentamos: o RankTrash!"],
+["upx", "Esse é o nosso projeto de UPX, do segundo semestre de Engenharia da Computação da Facens, pensado para apoiar a campanha Lixo Zero."],
+["steps", "Funciona assim: você vai até uma lixeira, tira uma foto do resíduo, a inteligência artificial reconhece o que é, o GPS confirma onde você está… e pronto: pontos na conta!"],
+["microsoft", "Pra entrar, nada de cadastro nem senha nova. O login é com a sua conta Microsoft da Facens, direto na página oficial da Microsoft. Só entra quem tem e-mail arroba facens ponto bê érre, e a sua senha nunca passa pelo app. Ou seja: cada ponto do ranking é de um aluno de verdade."],
+["map", "No mapa, aparecem todas as lixeiras do campus. As vermelhas ainda não foram exploradas, e valem bônus! E o letreiro mostra, ao vivo, tudo o que a galera está descartando."],
+["camera", "Achou a lixeira? Abre a câmera. O GPS já mostra qual lixeira está mais perto, a que distância, e com qual precisão."],
+["ai", "Clique! A inteligência artificial do Gemini analisa a foto em segundos: qual é o item, qual é o material, e até se a lata está amassada."],
+["result", "Descarte validado! Mais quinze pontos. E o app ainda ensina: lata vai na lixeira amarela, a de metal. Cada descarte vira uma mini aula de educação ambiental."],
+["antifraud", "Ah, e nem adianta tentar trapacear! Foto repetida? O app reconhece. Foto da tela? Recusada. Tem limite por dia, os pontos são calculados no servidor, e o top dez passa por auditoria."],
+["ranking", "Aí começa a competição: ranking mensal com prêmios, guerra entre os cursos, e o ranking da semana, pra quem acabou de chegar."],
+["profile", "No perfil, você sobe de nível, mantém a sequência de dias, desbloqueia conquistas, e vê o seu impacto real: quantos quilos você tirou do aterro."],
+["admin", "E pra quem organiza, tem um painel completo: lixeiras no mapa, fila de revisão, auditoria do top dez, e gestão de usuários."],
+["data", "E o melhor de tudo: dados. Cada descarte registra o que foi jogado fora, onde, e quando. Com isso, dá pra planejar a coleta, e medir de verdade o resultado de cada campanha."],
+["impact", "Para a Facens, é inovação feita pelos próprios alunos. Para a comunidade, é um hábito que vai junto pra casa. E para o mundo, é um passo concreto rumo aos Objetivos de Desenvolvimento Sustentável da ONU."],
+["cost", "Tudo isso com custo praticamente zero, em qualquer celular, sem baixar nada da loja, e pronto pra ser levado a qualquer universidade."],
+["close", "RankTrash: descarte certo, ganhe pontos, e suba no ranking! Saiba mais em ranktrash ponto eco ponto bê érre."]
+]

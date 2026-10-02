@@ -62,103 +62,97 @@ def tri(f, tt):
 
 
 # ------------------------------------------------------------------ music
-BPM = 112
+BPM = 124
 BEAT = 60 / BPM
 BAR = BEAT * 4
 midi = lambda m: 440 * 2 ** ((m - 69) / 12)
-# I–V–vi–IV in D major: D, A, Bm, G (with colour tones)
-CHORDS = [[50, 57, 62, 66, 69], [45, 52, 61, 64, 69], [47, 54, 62, 66, 71], [43, 50, 59, 62, 67]]
+CHORDS = [[50, 57, 62, 66, 69], [45, 52, 61, 64, 69], [47, 54, 62, 66, 71], [43, 50, 59, 62, 67]]  # D A Bm G
 scenes = {s['key']: s for s in tl['scenes']}
 S = lambda k: scenes[k]['start']
 E_ = lambda k: scenes[k]['end']
-
-# energy sections: (start, end, level) for drums/bass/arp; pad always on
+DROP = S('reveal') + max(0.0, min(3.5, (S('upx') - S('reveal')) - 4.4))  # ~ logo slam
+# snap the drop to the nearest bar so the groove lands on it
+DROP = round(DROP / BAR) * BAR
+END = tl['total']
 SEC = {
-    'drums': [(S('reveal'), S('impact')), (S('cost'), E_('close') - 5.5)],
-    'bass': [(S('hook'), S('impact')), (S('cost'), E_('close') - 5.0)],
-    'arp': [(0, T)],
+    'kick': [(S('hook'), S('reveal') - 2 * BAR), (DROP, S('impact')), (S('cost'), END - 1.5)],
+    'half': [(S('impact'), S('cost'))],
+    'snare': [(DROP, S('impact')), (S('cost'), END - 1.5)],
+    'hat': [(S('hook'), S('reveal') - BAR), (DROP, END - 1.5)],
+    'bass': [(S('hook'), S('reveal') - BAR), (DROP, END - 1.5)],
+    'lead': [(DROP, DROP + 8 * BAR), (S('result'), S('result') + 4 * BAR), (S('cost'), END - 1.5)],
+    'arp': [(0, END)],
 }
-
-
-def active(name, t):
-    return any(a <= t < b for a, b in SEC[name])
-
-
-pad = np.zeros(n); bass = np.zeros(n); arp = np.zeros(n); drums = np.zeros(n)
+act = lambda name, t: any(a <= t < b for a, b in SEC[name])
+# 2-bar lead phrases (16th steps, None = rest), notes as midi
+LEAD = [
+    [74, None, 78, None, 81, None, 78, 81, 83, None, 81, None, 78, None, 76, None,  73, None, 76, None, 81, None, 76, 78, 76, None, 73, None, 69, None, None, None],
+    [71, None, 74, None, 78, None, 74, 78, 79, None, 78, None, 74, None, 71, None,  74, None, 79, None, 83, None, 81, 79, 78, None, 76, None, 74, None, None, None],
+]
+pad = np.zeros(n); bass = np.zeros(n); arp = np.zeros(n); drums = np.zeros(n); lead = np.zeros(n); kickenv = np.zeros(n)
 nbars = int(T / BAR) + 1
 for b in range(nbars):
     t0 = b * BAR
     ch = CHORDS[b % 4]
-    # pad: detuned saws, 1 bar, soft attack
-    L = int(BAR * SR) + int(0.4 * SR)
-    tt = np.arange(L) / SR
+    L = int(BAR * SR) + int(0.3 * SR); tt = np.arange(L) / SR
     x = sum(saw(midi(m) * (1 + d), tt) for m in ch[1:] for d in (-0.004, 0.0037)) / 8
-    x *= env_adsr(L, a=0.35, d=0.4, s=0.8, r=0.5)
-    add(pad, x, t0)
-    # bass: 8th-note pulse on root
-    if active('bass', t0 + 0.01):
-        for k in range(8):
-            Lb = int(BEAT / 2 * SR * 0.9)
-            tb = np.arange(Lb) / SR
-            f = midi(ch[0] - 12 + (12 if k in (3, 7) else 0))
-            y = (np.sin(2 * np.pi * f * tb) + 0.35 * sq(f, tb, 0.25)) * env_adsr(Lb, 0.004, 0.08, 0.5, 0.05)
-            add(bass, y, t0 + k * BEAT / 2)
-    # arp: chiptune 16ths across chord tones
+    add(pad, x * env_adsr(L, a=0.25, d=0.4, s=0.8, r=0.4), t0)
+    for k in range(8):
+        tb0 = t0 + k * BEAT / 2
+        if not act('bass', tb0):
+            continue
+        Lb = int(BEAT / 2 * SR * 0.85); tb = np.arange(Lb) / SR
+        f = midi(ch[0] - 12 + (12 if k % 2 else 0))
+        add(bass, (np.sin(2 * np.pi * f * tb) + 0.4 * sq(f, tb, 0.25)) * env_adsr(Lb, 0.003, 0.07, 0.5, 0.04), tb0)
     pattern = [1, 2, 3, 4, 3, 2, 1, 2, 1, 2, 3, 4, 3, 4, 2, 3]
     for k in range(16):
         ts = t0 + k * BEAT / 4
-        if not active('arp', ts):
+        La = int(BEAT / 4 * SR * 0.8); ta = np.arange(La) / SR
+        add(arp, sq(midi(ch[pattern[k]] + 12), ta, 0.25) * env_adsr(La, 0.002, 0.05, 0.35, 0.03), ts)
+    ph = LEAD[(b // 2) % 2][(b % 2) * 16:(b % 2) * 16 + 16]
+    for k, m in enumerate(ph):
+        ts = t0 + k * BEAT / 4
+        if m is None or not act('lead', ts):
             continue
-        La = int(BEAT / 4 * SR * 0.8)
-        ta = np.arange(La) / SR
-        f = midi(ch[pattern[k]] + 12)
-        add(arp, sq(f, ta, 0.25) * env_adsr(La, 0.002, 0.05, 0.35, 0.03), ts)
-    # drums
-    if active('drums', t0 + 0.01):
-        for k in range(4):
-            tk = t0 + k * BEAT
-            # kick on 1 and 3 (+ pickup)
-            if k in (0, 2):
-                Lk = int(0.35 * SR); tq = np.arange(Lk) / SR
-                f = 50 + 110 * np.exp(-tq * 28)
-                kick = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-tq * 9)
-                add(drums, kick, tk, 1.0)
-            if k in (1, 3):  # snare/clap
-                Ls = int(0.22 * SR)
-                nz = hp(rng.standard_normal(Ls), 1200) * np.exp(-np.arange(Ls) / SR * 18)
-                tone = np.sin(2 * np.pi * 190 * np.arange(Ls) / SR) * np.exp(-np.arange(Ls) / SR * 30)
-                add(drums, nz * 0.45 + tone * 0.3, tk, 0.8)
-            for h in (0.5,):  # off-beat hats
-                Lh = int(0.06 * SR)
-                hat = hp(rng.standard_normal(Lh), 7000) * np.exp(-np.arange(Lh) / SR * 70)
-                add(drums, hat, tk + h * BEAT, 0.35)
-
-# shape layers over time
+        dur = BEAT / 4 * (2 if k + 1 < 16 and ph[k + 1] is None else 1) * 0.9
+        Ll = int(dur * SR); tl_ = np.arange(Ll) / SR
+        vib = 1 + 0.004 * np.sin(2 * np.pi * 6 * tl_) * (tl_ > 0.08)
+        add(lead, (sq(midi(m) * vib, tl_, 0.5) * 0.6 + tri(midi(m), tl_) * 0.4) * env_adsr(Ll, 0.004, 0.08, 0.6, 0.04), ts)
+    for k in range(4):
+        tk = t0 + k * BEAT
+        full = act('kick', tk + 0.001); half = act('half', tk + 0.001) and k in (0,)
+        if full or half:
+            Lk = int(0.32 * SR); tq = np.arange(Lk) / SR
+            f = 48 + 120 * np.exp(-tq * 30)
+            add(drums, np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-tq * 10), tk, 1.0)
+            add(kickenv, np.exp(-np.arange(int(0.3 * SR)) / SR * 9), tk)
+        if act('snare', tk + 0.001) and k in (1, 3):
+            Ls = int(0.2 * SR)
+            nz = hp(rng.standard_normal(Ls), 1500) * np.exp(-np.arange(Ls) / SR * 20)
+            tone = np.sin(2 * np.pi * 200 * np.arange(Ls) / SR) * np.exp(-np.arange(Ls) / SR * 30)
+            add(drums, nz * 0.5 + tone * 0.3, tk, 0.85)
+        if act('hat', tk + 0.001):
+            for h in (0.5,) if not act('snare', tk + 0.001) else (0.25, 0.5, 0.75):
+                Lh = int(0.05 * SR)
+                add(drums, hp(rng.standard_normal(Lh), 7500) * np.exp(-np.arange(Lh) / SR * 80), tk + h * BEAT, 0.3 if h != 0.5 else 0.4)
 tt = np.arange(n) / SR
-
-
-def curve(points):
-    xs, ys = zip(*points)
-    return np.interp(tt, xs, ys)
-
-
-fade_end = E_('close')
-pad_g = curve([(0, 0), (2.5, 0.9), (S('problem'), 0.9), (S('problem') + 1, 0.6), (S('reveal') - 0.3, 0.5), (S('reveal'), 0.75),
-               (S('impact'), 0.75), (S('impact') + 1, 1.0), (S('cost'), 0.8), (fade_end - 4, 0.9), (fade_end, 0)])
-# darker filter in the "problem" section
-pad = lp(pad, 2400)
-pad_dark = lp(pad, 700)
-dark = curve([(0, 0), (S('problem'), 0), (S('problem') + 1.5, 1), (S('reveal') - 0.5, 1), (S('reveal'), 0)])
-pad = pad * (1 - dark) + pad_dark * dark
-arp = lp(arp, 5000)
-arp_g = curve([(0, 0.0), (1.5, 0.35), (S('problem'), 0.35), (S('problem') + 1, 0.08), (S('reveal') - 0.2, 0.08), (S('reveal'), 0.5),
-               (S('impact'), 0.5), (S('impact') + 1, 0.35), (fade_end - 4, 0.45), (fade_end, 0)])
-music = pad * pad_g * 0.34 + lp(bass, 1800) * 0.36 + arp * arp_g * 0.13 + drums * 0.5
-# riser into the reveal drop
-Lr = int(3.0 * SR); tr = np.arange(Lr) / SR
-riser = hp(rng.standard_normal(Lr), 500) * (tr / 3.0) ** 2 * 0.25
-add(music, lp(riser, 6000), S('reveal') - 3.0)
-
+curve = lambda pts: np.interp(tt, *zip(*pts))
+pump = 1 - 0.45 * np.clip(kickenv, 0, 1)
+pad = lp(pad, 2600)
+arp = lp(arp, 5200)
+pad_g = curve([(0, 0.5), (2.8, 0.7), (S('reveal') - 2 * BAR, 0.6), (DROP, 0.8), (S('impact'), 0.8), (S('impact') + 1, 1.0), (S('cost'), 0.8), (END - 3, 0.8), (END, 0)])
+arp_g = curve([(0, 0.55), (2.8, 0.35), (DROP - 0.01, 0.2), (DROP, 0.45), (S('impact'), 0.45), (S('impact') + 1, 0.55), (END - 2, 0.4), (END, 0)])
+music = pad * pad_g * pump * 0.30 + lp(bass, 1800) * pump * 0.40 + arp * arp_g * 0.12 + drums * 0.55 + lp(lead, 6000) * 0.11
+# riser + impact into the drop, and a short riser in the intro
+for t_end, d in ((DROP, 2 * BAR), (2.8, 2.0)):
+    Lr = int(d * SR); tr = np.arange(Lr) / SR
+    sweep = np.sin(2 * np.pi * np.cumsum(200 + 1400 * (tr / d) ** 2) / SR) * 0.08
+    add(music, (lp(hp(rng.standard_normal(Lr), 400), 7000) * 0.22 + sweep) * (tr / d) ** 2, t_end - d)
+Lc = int(1.5 * SR); tc = np.arange(Lc) / SR
+add(music, lp(rng.standard_normal(Lc), 5000) * np.exp(-tc * 3) * 0.35, DROP)
+# final chord ring-out
+Lf = int(3 * SR); tf_ = np.arange(Lf) / SR
+add(music, sum(sq(midi(m), tf_, 0.25) for m in (62, 66, 69, 74)) / 4 * np.exp(-tf_ * 1.2) * 0.25, END - 3)
 # ------------------------------------------------------------------ SFX
 def sfx(name):
     if name == 'whoosh':
@@ -241,6 +235,54 @@ def sfx(name):
             L = int(0.04 * SR); t = np.arange(L) / SR
             x = sq(midi(84 - i), t, 0.5) * 0.06
             j = int(i * 0.1 * SR); out[j:j + L] += x
+        return out
+    if name == 'boing':
+        L = int(0.3 * SR); t = np.arange(L) / SR
+        f = 300 + 250 * np.sin(2 * np.pi * 9 * t) * np.exp(-t * 6)
+        return np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t * 8) * 0.35
+    if name == 'fall':
+        L = int(0.6 * SR); t = np.arange(L) / SR
+        f = 1400 * np.exp(-t * 3) + 200
+        return sq(f, t, 0.5) * 0.07 * (1 - t / 0.6)
+    if name == 'splat':
+        L = int(0.5 * SR); t = np.arange(L) / SR
+        return lp(rng.standard_normal(L), 1200) * np.exp(-t * 9) * 0.8 + np.sin(2 * np.pi * 80 * t) * np.exp(-t * 12) * 0.6
+    if name == 'slam':
+        L = int(0.35 * SR); t = np.arange(L) / SR
+        f = 60 + 140 * np.exp(-t * 30)
+        return np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t * 12) * 0.8 + hp(rng.standard_normal(L), 2000) * np.exp(-t * 40) * 0.3
+    if name == 'stamp':
+        L = int(0.4 * SR); t = np.arange(L) / SR
+        return lp(rng.standard_normal(L), 2500) * np.exp(-t * 25) * 0.9 + np.sin(2 * np.pi * 110 * t) * np.exp(-t * 15) * 0.6
+    if name == 'impact':
+        L = int(1.2 * SR); t = np.arange(L) / SR
+        f = 40 + 90 * np.exp(-t * 12)
+        return np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t * 3.5) * 0.9 + lp(rng.standard_normal(L), 4000) * np.exp(-t * 6) * 0.35
+    if name == 'jump':
+        L = int(0.18 * SR); t = np.arange(L) / SR
+        f = 300 * 2 ** (t * 12)
+        return sq(f, t, 0.5) * np.exp(-t * 10) * 0.1
+    if name == 'zoom':
+        L = int(0.4 * SR); t = np.arange(L) / SR
+        return hp(lp(rng.standard_normal(L), 6000), 600) * np.sin(np.pi * t / 0.4) ** 2 * 0.3
+    if name == 'detect':
+        out = np.zeros(int(0.3 * SR))
+        for i, m in enumerate([88, 93]):
+            L = int(0.1 * SR); t = np.arange(L) / SR
+            j = int(i * 0.08 * SR); out[j:j + L] += np.sin(2 * np.pi * midi(m) * t) * np.exp(-t * 25) * 0.25
+        return out
+    if name == 'coins':
+        out = np.zeros(int(1.0 * SR))
+        for i in range(7):
+            L = int(0.2 * SR); t = np.arange(L) / SR
+            f = np.where(t < 0.04, midi(86 + i % 3), midi(91 + i % 3))
+            j = int(i * 0.09 * SR); out[j:j + L] += sq(f, t, 0.5) * np.exp(-t * 14) * 0.08
+        return out
+    if name == 'levelup':
+        out = np.zeros(int(1.0 * SR))
+        for i, m in enumerate([67, 71, 74, 79, 83, 86]):
+            L = int(0.18 * SR); t = np.arange(L) / SR
+            j = int(i * 0.07 * SR); out[j:j + L] += sq(midi(m), t, 0.25) * np.exp(-t * 8) * 0.12
         return out
     raise ValueError(name)
 
