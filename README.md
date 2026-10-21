@@ -28,7 +28,7 @@ Abra http://localhost:5173. No modo demo tudo é simulado localmente: dados, IA 
 |---|---|
 | Framework | [React 19](https://react.dev) + [React Router 7](https://reactrouter.com) (SPA) |
 | Linguagem | [TypeScript 6](https://www.typescriptlang.org) (`strict`), compartilhando as regras de negócio com o servidor |
-| Build e dev server | [Vite 8](https://vite.dev) + `@vitejs/plugin-react`, com modos `demo` e real |
+| Build e dev server | [Vite 8](https://vite.dev) + `@vitejs/plugin-react`, com modos `demo` e real e build de duas páginas (app e landing) |
 | PWA | [`vite-plugin-pwa`](https://vite-pwa-org.netlify.app) (Workbox, service worker com atualização automática, manifest instalável) |
 | Mapa | [Leaflet](https://leafletjs.com) + [React Leaflet](https://react-leaflet.js.org), renderizando vetores com [MapLibre GL](https://maplibre.org) via `@maplibre/maplibre-gl-leaflet`. Tiles do [OpenFreeMap](https://openfreemap.org) (sem chave) e estilo próprio em `src/lib/mapStyle.ts` |
 | Câmera e foto | `getUserMedia` + Canvas (JPEG redimensionado) e hash perceptual (dHash) da foto calculado no cliente |
@@ -54,7 +54,7 @@ Abra http://localhost:5173. No modo demo tudo é simulado localmente: dados, IA 
 
 | Parte | Tecnologia |
 |---|---|
-| Hospedagem do app | [Vercel](https://vercel.com) (site estático + rewrite de SPA em `vercel.json`) |
+| Hospedagem | [Vercel](https://vercel.com): um único projeto estático com duas páginas (app e landing), com rewrite de SPA e rewrite por host em `vercel.json` |
 | Domínio e DNS | `ranktrash.eco.br` (registro.br) com DNS na [Cloudflare](https://www.cloudflare.com) |
 | E-mail transacional | [Resend](https://resend.com) como SMTP do Supabase (reservado para avisos futuros) |
 | Testes | [Vitest 5](https://vitest.dev) (pontuação, geofence, antifraude, nomes e parser do Gemini) |
@@ -69,7 +69,8 @@ Abra http://localhost:5173. No modo demo tudo é simulado localmente: dados, IA 
 src/
   components/   Layout (moldura "console"), CampusMap, Mascot, PixelArt (ícones pixel), InstallPrompt, PublicShell
   pages/        Login, ExternalLogin, Onboarding, MapPage, Register (câmera), Ranking, Profile, Admin, Rules, Legal, Suspended
-  lib/          api (Supabase real ou mock), geolocalização, câmera/imagem, mapa, sons, PWA, sessão
+  lib/          api (Supabase real ou mock), geolocalização, câmera/imagem, mapa, sons, PWA, sessão, endereços do site
+  landing/      landing page (entrada `landing.html`), servida em sobre.ranktrash.eco.br
 supabase/
   migrations/   esquema, RLS, funções de ranking/revisão/temporada, buckets, login Microsoft
   functions/
@@ -118,11 +119,15 @@ docs/           conceito do projeto e screenshots
 ## Domínio (produção)
 
 App: **https://ranktrash.eco.br** (Vercel). `www` redireciona para o domínio principal.
+Landing page (apresentação do projeto): **https://sobre.ranktrash.eco.br**, a mesma build do app, servida pelo mesmo projeto da Vercel.
+
+Quem abre o site no navegador (fora do app instalado) vê primeiro uma tela com **Instalar app e testar** e **Conhecer mais sobre**, que leva à landing page. Quem abre pelo PWA instalado vai direto ao app. Em dev e previews o botão abre `/landing.html`. Para apontar para outro endereço, defina `VITE_LANDING_URL`.
 
 1. **DNS na Cloudflare:** o domínio foi registrado no registro.br. Na Cloudflare, adicione o site e troque os nameservers no registro.br pelos que a Cloudflare indicar.
 2. **Registros da Vercel** (Cloudflare → DNS, proxy **desligado**/nuvem cinza):
    * `A` `@` → `76.76.21.21`
    * `CNAME` `www` → `cname.vercel-dns.com`
+   * `CNAME` `sobre` → `cname.vercel-dns.com` (landing page; adicione também `sobre.ranktrash.eco.br` em *Settings → Domains* do projeto na Vercel)
 3. **Supabase → URL Configuration:** Site URL `https://ranktrash.eco.br`. Em Redirect URLs, deixe `https://ranktrash.eco.br/**` e `https://ranktrash.vercel.app/**`.
 4. **E-mail (opcional):** o domínio também está verificado no Resend (SPF/DKIM na Cloudflare) e configurado como SMTP do Supabase. O login não usa e-mail, mas o SMTP fica pronto para avisos futuros.
 

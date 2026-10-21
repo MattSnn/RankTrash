@@ -7,17 +7,19 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 type Platform = 'ios' | 'android' | 'desktop'
+export type GateStage = 'welcome' | 'install' | null
 
 const DISMISS_KEY = 'ranktrash:install-dismissed'
 
 let deferred: BeforeInstallPromptEvent | null = null
 let installed = false
-let gateOpen = !isStandalone() && isMobile() && !dismissedThisSession()
+// 'welcome': escolha entre instalar/testar e conhecer o projeto. 'install': passo a passo da instalação.
+let stage: GateStage = !isStandalone() && !dismissedThisSession() ? 'welcome' : null
 const listeners = new Set<() => void>()
 let snapshot = makeSnapshot()
 
 function makeSnapshot() {
-  return { canPrompt: deferred != null, installed: installed || isStandalone(), gateOpen }
+  return { canPrompt: deferred != null, installed: installed || isStandalone(), stage }
 }
 
 function notify() {
@@ -34,7 +36,7 @@ if (typeof window !== 'undefined') {
   window.addEventListener('appinstalled', () => {
     deferred = null
     installed = true
-    gateOpen = false
+    stage = null
     notify()
   })
 }
@@ -61,10 +63,6 @@ export function isIosSafari(): boolean {
   return detectPlatform() === 'ios' && !/CriOS|FxiOS|EdgiOS|GSA|Instagram|FBAN|FBAV/.test(navigator.userAgent)
 }
 
-function isMobile(): boolean {
-  return typeof navigator !== 'undefined' && detectPlatform() !== 'desktop'
-}
-
 function dismissedThisSession(): boolean {
   try {
     return sessionStorage.getItem(DISMISS_KEY) === '1'
@@ -81,25 +79,32 @@ export async function promptInstall(): Promise<boolean> {
   deferred = null
   if (outcome === 'accepted') {
     installed = true
-    gateOpen = false
+    stage = null
   }
   notify()
   return outcome === 'accepted'
 }
 
+/** Mostra o passo a passo da instalação. */
 export function openInstallGate() {
-  gateOpen = true
+  stage = 'install'
   notify()
 }
 
-/** "Agora não": some só até o app ser aberto de novo no navegador. */
+/** Volta à tela inicial (instalar e testar / conhecer mais). */
+export function openWelcomeGate() {
+  stage = 'welcome'
+  notify()
+}
+
+/** "Continuar no navegador": some só até o app ser aberto de novo no navegador. */
 export function dismissInstallGate() {
   try {
     sessionStorage.setItem(DISMISS_KEY, '1')
   } catch {
     /* sem storage: só fecha */
   }
-  gateOpen = false
+  stage = null
   notify()
 }
 

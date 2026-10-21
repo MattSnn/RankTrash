@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { detectPlatform, dismissInstallGate, isIosSafari, openInstallGate, promptInstall, usePwaInstall } from '../lib/pwa'
+import { detectPlatform, dismissInstallGate, isIosSafari, openInstallGate, openWelcomeGate, promptInstall, usePwaInstall } from '../lib/pwa'
+import { landingUrl } from '../lib/site'
 import { play } from '../lib/sfx'
 import { Mascot } from './Mascot'
 import { Icon, type IconName } from './PixelArt'
@@ -66,15 +67,65 @@ function AndroidSteps() {
   )
 }
 
-/** Tela cheia pedindo para instalar o app. Volta toda vez que o site é aberto no navegador do celular. */
+function DesktopSteps() {
+  return (
+    <>
+      <p>O RankTrash é feito para o celular, mas também dá para instalar no computador:</p>
+      <ol className="install-steps">
+        <Step n={1} icon="dots">
+          No Chrome ou Edge, clique no ícone de <b>instalar</b> na barra de endereço ou em <b>⋮</b> e depois{' '}
+          <b>Instalar RankTrash</b>.
+        </Step>
+        <Step n={2} icon="phone">
+          Para o celular, abra <b>{window.location.host}</b> nele e instale por lá.
+        </Step>
+      </ol>
+    </>
+  )
+}
+
+function InstallSteps({ platform }: { platform: ReturnType<typeof detectPlatform> }) {
+  if (platform === 'ios') return <IosSteps />
+  if (platform === 'android') return <AndroidSteps />
+  return <DesktopSteps />
+}
+
+/**
+ * Tela cheia para quem abre o site no navegador (fora do app instalado). Primeiro a escolha entre
+ * "instalar e testar" e "conhecer mais" (landing page); só depois vem o passo a passo da instalação.
+ */
 export function InstallGate() {
-  const { installed, gateOpen, canPrompt } = usePwaInstall()
-  if (installed || !gateOpen) return null
+  const { installed, stage, canPrompt } = usePwaInstall()
+  if (installed || !stage) return null
   const platform = detectPlatform()
 
   async function install() {
     play('click')
-    await promptInstall()
+    if (canPrompt) await promptInstall()
+    else openInstallGate()
+  }
+
+  if (stage === 'welcome') {
+    return (
+      <div className="install-gate" role="dialog" aria-modal="true" aria-labelledby="install-title">
+        <div className="install-card">
+          <Mascot size={84} mood="happy" />
+          <h1 id="install-title">RANKTRASH</h1>
+          <p>
+            Fotografe o lixo, descarte certo e <b>ganhe pontos</b> no ranking da campanha Lixo Zero da Facens.
+          </p>
+          <button className="btn btn--green btn--block install-cta" onClick={() => void install()}>
+            <Icon name="addBox" size={16} /> INSTALAR APP E TESTAR
+          </button>
+          <a className="btn btn--orange btn--block install-cta" href={landingUrl()} onClick={() => play('click')}>
+            <Icon name="star" size={16} /> CONHECER MAIS SOBRE
+          </a>
+          <button className="btn btn--ghost btn--block" style={{ marginTop: 16 }} onClick={dismissInstallGate}>
+            CONTINUAR NO NAVEGADOR
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -89,12 +140,13 @@ export function InstallGate() {
           <button className="btn btn--green btn--block install-cta" onClick={() => void install()}>
             <Icon name="addBox" size={16} /> INSTALAR APP
           </button>
-        ) : platform === 'ios' ? (
-          <IosSteps />
         ) : (
-          <AndroidSteps />
+          <InstallSteps platform={platform} />
         )}
-        <button className="btn btn--ghost btn--block" style={{ marginTop: 16 }} onClick={dismissInstallGate}>
+        <button className="btn btn--ghost btn--block" style={{ marginTop: 16 }} onClick={openWelcomeGate}>
+          VOLTAR
+        </button>
+        <button className="btn btn--ghost btn--block" style={{ marginTop: 10 }} onClick={dismissInstallGate}>
           AGORA NÃO
         </button>
       </div>

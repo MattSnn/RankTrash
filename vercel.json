@@ -1,3 +1,10 @@
 {
-  "rewrites": [{ "source": "/((?!assets/|icons/|sw.js|workbox-|manifest.webmanifest|registerSW.js).*)", "destination": "/index.html" }]
+  "rewrites": [
+    {
+      "source": "/((?!assets/|icons/|landing/).*)",
+      "has": [{ "type": "host", "value": "sobre.ranktrash.eco.br" }],
+      "destination": "/landing.html"
+    },
+    { "source": "/((?!assets/|icons/|landing/|sw.js|workbox-|manifest.webmanifest|registerSW.js).*)", "destination": "/index.html" }
+  ]
 }

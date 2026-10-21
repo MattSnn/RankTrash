@@ -1,10 +1,28 @@
+import type { Plugin } from 'vite'
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// A landing page não é um PWA: sem link do manifest e sem registro do service worker (só o app instala).
+function landingWithoutPwa(): Plugin {
+  return {
+    name: 'landing-without-pwa',
+    apply: 'build',
+    enforce: 'post',
+    generateBundle(_, bundle) {
+      const page = bundle['landing.html']
+      if (page?.type !== 'asset' || typeof page.source !== 'string') return
+      page.source = page.source
+        .replace(/<link rel="manifest"[^>]*>/, '')
+        .replace(/<script id="vite-plugin-pwa:register-sw"[^>]*><\/script>/, '')
+    },
+  }
+}
+
 export default defineConfig({
   plugins: [
     react(),
+    landingWithoutPwa(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icons/icon.svg', 'icons/apple-touch-icon.png'],
@@ -31,6 +49,9 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // a landing page é outra página (outro subdomínio em produção): fora do cache do app e da navegação offline
+        globIgnores: ['landing.html', 'landing/**', 'assets/landing-*'],
+        navigateFallbackDenylist: [/^\/landing\.html$/],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/tile\.openstreetmap\.org\/.*/,
@@ -41,5 +62,9 @@ export default defineConfig({
       },
     }),
   ],
+  build: {
+    // duas páginas: o app (index.html) e a landing page (landing.html, servida em sobre.ranktrash.eco.br)
+    rollupOptions: { input: { main: 'index.html', landing: 'landing.html' } },
+  },
   test: { include: ['tests/**/*.test.ts'] },
 })
