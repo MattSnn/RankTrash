@@ -2,17 +2,21 @@
 
 PWA gamificado para a campanha **Lixo Zero da Facens**. O aluno fotografa o resíduo na lixeira, a IA (Google Gemini) identifica o item e o material, o GPS confirma a lixeira e o aluno ganha pontos para subir no ranking mensal.
 
+🌐 **Em produção:** https://ranktrash.eco.br
+
 * 📄 Conceito completo, regras e material para o relatório da UPX: [`docs/CONCEITO.md`](docs/CONCEITO.md)
 * 🖼️ Screenshots (modo demo): [`docs/screenshots/`](docs/screenshots)
 
-## Rodar agora (modo demo, sem backend)
+## Rodar localmente (modo demo)
+
+O app já está em produção com backend real (veja [Configurar o backend](#configurar-o-backend-de-verdade) e [Domínio](#domínio-produção)). Para desenvolver a interface sem precisar de Supabase nem de chave do Gemini, use o modo demo:
 
 ```bash
 npm install
 npm run dev:demo
 ```
 
-Abra http://localhost:5173. No modo demo tudo é simulado: dados, IA (sorteia um item) e GPS (se você estiver longe do campus). Mesmo assim, as regras reais de pontuação e antifraude são aplicadas. Tente enviar a mesma foto duas vezes, por exemplo.
+Abra http://localhost:5173. No modo demo tudo é simulado localmente: dados, IA (sorteia um item) e GPS (se você estiver longe do campus). Mesmo assim, as regras reais de pontuação e antifraude são aplicadas. Tente enviar a mesma foto duas vezes, por exemplo.
 
 > Para testar a câmera no celular, o navegador exige HTTPS. Use `npm run dev:demo -- --host` com um túnel (ex.: `npx localtunnel --port 5173`) ou faça o deploy na Vercel.
 
