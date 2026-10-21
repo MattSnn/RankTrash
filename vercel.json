@@ -1,10 +1,12 @@
 {
-  "rewrites": [
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "routes": [
     {
-      "source": "/((?!assets/|icons/|landing/).*)",
+      "src": "^/(?!assets/|icons/|landing/).*",
       "has": [{ "type": "host", "value": "sobre.ranktrash.eco.br" }],
-      "destination": "/landing.html"
+      "dest": "/landing.html"
     },
-    { "source": "/((?!assets/|icons/|landing/|sw.js|workbox-|manifest.webmanifest|registerSW.js).*)", "destination": "/index.html" }
+    { "handle": "filesystem" },
+    { "src": "^/(?!assets/|icons/|landing/|sw\\.js|workbox-|manifest\\.webmanifest|registerSW\\.js).*", "dest": "/index.html" }
   ]
 }
