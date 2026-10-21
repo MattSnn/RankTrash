@@ -18,28 +18,64 @@ Abra http://localhost:5173. No modo demo tudo é simulado: dados, IA (sorteia um
 
 ## Stack
 
+### Frontend (PWA)
+
+| Camada | Tecnologia |
+|---|---|
+| Framework | [React 19](https://react.dev) + [React Router 7](https://reactrouter.com) (SPA) |
+| Linguagem | [TypeScript 6](https://www.typescriptlang.org) (`strict`), compartilhando as regras de negócio com o servidor |
+| Build e dev server | [Vite 8](https://vite.dev) + `@vitejs/plugin-react`, com modos `demo` e real |
+| PWA | [`vite-plugin-pwa`](https://vite-pwa-org.netlify.app) (Workbox, service worker com atualização automática, manifest instalável) |
+| Mapa | [Leaflet](https://leafletjs.com) + [React Leaflet](https://react-leaflet.js.org), renderizando vetores com [MapLibre GL](https://maplibre.org) via `@maplibre/maplibre-gl-leaflet`. Tiles do [OpenFreeMap](https://openfreemap.org) (sem chave) e estilo próprio em `src/lib/mapStyle.ts` |
+| Câmera e foto | `getUserMedia` + Canvas (JPEG redimensionado) e hash perceptual (dHash) da foto calculado no cliente |
+| Geolocalização | Geolocation API do navegador + cálculo de distância (Haversine) |
+| Áudio | Web Audio API (efeitos 8-bit gerados em código, sem arquivos de áudio) |
+| Visual | CSS próprio (`src/styles/theme.css`), tema pixel art, fontes [Press Start 2P](https://fontsource.org/fonts/press-start-2p) e [VT323](https://fontsource.org/fonts/vt323) via Fontsource, ícones e mascote em SVG/pixel |
+| Cliente da API | [`@supabase/supabase-js`](https://github.com/supabase/supabase-js) (ou `mockApi` no modo demo) |
+
+### Backend (Supabase)
+
+| Camada | Tecnologia |
+|---|---|
+| Banco de dados | [PostgreSQL](https://www.postgresql.org) gerenciado pelo Supabase, com migrations SQL versionadas, funções PL/pgSQL (ranking, revisão, temporadas), triggers e a extensão `pgcrypto` |
+| Segurança de dados | Row Level Security (RLS) em todas as tabelas e políticas no Storage |
+| Autenticação | Supabase Auth + login com a conta Microsoft da faculdade (Microsoft Entra ID / OAuth 2.0), restrito aos domínios de `app_config.allowed_email_domains` |
+| Storage | Supabase Storage (buckets de fotos de descarte e de lixeiras) |
+| Serverless | Supabase Edge Functions em [Deno](https://deno.com) + TypeScript: `register-disposal` (valida e pontua), `ms-auth` (fluxo de login Microsoft) e `admin-users` (ações administrativas, com service role) |
+| IA | [Google Gemini](https://ai.google.dev) via REST com saída JSON estruturada (`gemini-3.5-flash-lite` por padrão, `gemini-3.1-flash-lite` e `gemini-2.5-flash-lite` como reserva; configurável por `GEMINI_MODEL`) |
+| Processamento de imagem | [`jpeg-js`](https://github.com/jpeg-js/jpeg-js) na Edge Function (decodifica o JPEG para o hash perceptual antifraude) |
+| Regras de negócio | Módulos TypeScript puros em `supabase/functions/_shared` (pontuação, geofence, antifraude, materiais, parser do Gemini), reaproveitados no app, nos testes e no servidor |
+
+### Infraestrutura, qualidade e ferramentas
+
 | Parte | Tecnologia |
 |---|---|
-| App | React 19 + Vite + TypeScript + `vite-plugin-pwa` |
-| Mapa | Leaflet + MapLibre (vetorial, OpenFreeMap, sem chave) com estilo próprio em `src/lib/mapStyle.ts` |
-| Backend | Supabase (Auth com conta Microsoft da faculdade, Postgres com RLS, Storage, Edge Functions) |
-| IA | Google Gemini (`gemini-3.5-flash-lite` por padrão, 3.1 Flash Lite como reserva; configurável) |
-| Deploy | Vercel (site estático) |
+| Hospedagem do app | [Vercel](https://vercel.com) (site estático + rewrite de SPA em `vercel.json`) |
+| Domínio e DNS | `ranktrash.eco.br` (registro.br) com DNS na [Cloudflare](https://www.cloudflare.com) |
+| E-mail transacional | [Resend](https://resend.com) como SMTP do Supabase (reservado para avisos futuros) |
+| Testes | [Vitest 5](https://vitest.dev) (pontuação, geofence, antifraude, nomes e parser do Gemini) |
+| Lint e tipos | ESLint 10 (`typescript-eslint`, `eslint-plugin-react-hooks`) e `tsc --noEmit` |
+| CLI | [Supabase CLI](https://supabase.com/docs/guides/cli) (migrations, secrets e deploy das funções) |
+| Ícones do PWA | `scripts/gen-icons.mjs` (Playwright) gera os PNGs a partir do mascote |
+| Runtime de desenvolvimento | Node.js + npm |
 
 ## Estrutura
 
 ```
 src/
-  components/   Layout (moldura "console"), CampusMap, Mascot, PixelArt (ícones pixel)
-  pages/        Login, Onboarding, MapPage, Register (câmera), Ranking, Profile, Admin, Rules
-  lib/          api (Supabase real ou mock), geolocalização, câmera, sons, sessão
+  components/   Layout (moldura "console"), CampusMap, Mascot, PixelArt (ícones pixel), InstallPrompt, PublicShell
+  pages/        Login, ExternalLogin, Onboarding, MapPage, Register (câmera), Ranking, Profile, Admin, Rules, Legal, Suspended
+  lib/          api (Supabase real ou mock), geolocalização, câmera/imagem, mapa, sons, PWA, sessão
 supabase/
-  migrations/   esquema, RLS, funções de ranking/revisão/temporada, bucket
+  migrations/   esquema, RLS, funções de ranking/revisão/temporada, buckets, login Microsoft
   functions/
     register-disposal/  Edge Function que valida e pontua um descarte
+    ms-auth/            Edge Function do login com a conta Microsoft da faculdade
+    admin-users/        Edge Function de ações do admin sobre usuários
     _shared/            regras puras (pontuação, geofence, antifraude, Gemini), usadas no app, nos testes e no servidor
   seed.sql      lixeiras de exemplo
 tests/          testes (vitest) das regras
+docs/           conceito do projeto e screenshots
 ```
 
 ## Configurar o backend de verdade
@@ -92,7 +128,7 @@ App: **https://ranktrash.eco.br** (Vercel). `www` redireciona para o domínio pr
 |---|---|
 | `npm run dev` / `npm run dev:demo` | servidor de desenvolvimento (real / demo) |
 | `npm run build` / `npm run build:demo` | build de produção com service worker |
-| `npm test` | testes das regras (pontuação, geofence, antifraude, parser do Gemini) |
+| `npm test` | testes das regras (pontuação, geofence, antifraude, nomes, parser do Gemini) |
 | `npm run lint` / `npm run typecheck` | qualidade de código |
 | `node scripts/gen-icons.mjs` | regenera os ícones do PWA a partir do mascote (precisa do playwright) |
 
