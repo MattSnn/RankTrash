@@ -25,8 +25,7 @@ const shot = (name: string, alt: string): Shot => ({ src: `/landing/${name}.webp
 
 const HERO_SHOTS = [
   shot('01-mapa', 'Mapa do campus com as lixeiras'),
-  shot('03-camera', 'Câmera ao vivo apontada para o resíduo'),
-  shot('05-analisando', 'A IA analisando a foto'),
+  shot('02-mapa-popup', 'Lixeira selecionada no mapa'),
   shot('06-resultado', 'Resultado: item, material, lixeira certa e pontos'),
   shot('07-ranking', 'Ranking do mês'),
   shot('08-perfil', 'Perfil com nível, streak e conquistas'),
@@ -48,14 +47,14 @@ const STEPS: { icon: IconName; tag: string; title: string; text: ReactNode; shot
   {
     icon: 'camera',
     tag: 'PASSO 2',
-    title: 'FOTOGRAFE O RESÍDUO',
+    title: 'ESCOLHA E FOTOGRAFE',
     text: (
       <>
-        A câmera abre <b>ao vivo</b> dentro do app, sem foto da galeria. Enquanto isso o GPS acompanha sua posição e
-        confirma de qual lixeira você está perto.
+        Toque na lixeira e em <b>DESCARTAR</b>. A câmera abre <b>ao vivo</b> dentro do app, sem foto da galeria,
+        enquanto o GPS confirma que você está perto dela.
       </>
     ),
-    shot: shot('03-camera', 'Câmera ao vivo com o GPS no topo'),
+    shot: shot('02-mapa-popup', 'Lixeira selecionada no mapa, com o botão de descartar'),
   },
   {
     icon: 'shield',
@@ -67,7 +66,7 @@ const STEPS: { icon: IconName; tag: string; title: string; text: ReactNode; shot
         o servidor roda as checagens antifraude.
       </>
     ),
-    shot: shot('05-analisando', 'Tela de análise da foto pela IA'),
+    shot: shot('06-resultado', 'Resultado da IA: item, material, lixeira certa e pontos'),
   },
   {
     icon: 'trophy',
@@ -75,17 +74,17 @@ const STEPS: { icon: IconName; tag: string; title: string; text: ReactNode; shot
     title: 'PONTOS NA CONTA',
     text: (
       <>
-        Descartou certo? Os pontos entram na hora, com bônus de streak e de primeira visita, e seu nome sobe no{' '}
+        Os pontos entram na conta, com bônus de streak e de primeira visita, e seu nome sobe no{' '}
         <b className="t-yellow">ranking do mês</b>.
       </>
     ),
-    shot: shot('06-resultado', 'Resultado com os pontos ganhos'),
+    shot: shot('07-ranking', 'Ranking do mês com o pódio'),
   },
 ]
 
 const SHOWCASE = [
   { ...shot('00-login', 'Login com a conta Microsoft da Facens'), caption: 'LOGIN FACENS' },
-  { ...shot('02-mapa-popup', 'Detalhe de uma lixeira no mapa'), caption: 'LIXEIRAS' },
+  { ...shot('06-resultado', 'Resultado de um descarte'), caption: 'RESULTADO' },
   { ...shot('07-ranking', 'Ranking do mês com pódio'), caption: 'RANKING' },
   { ...shot('08-perfil', 'Perfil do jogador'), caption: 'PERFIL' },
   { ...shot('09-admin', 'Painel do administrador'), caption: 'ADMIN' },
