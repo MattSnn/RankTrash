@@ -1092,6 +1092,166 @@ p {
   }
 }
 
+/* ---------- Tela de boas-vindas (navegador) ---------- */
+.welcome {
+  background:
+    radial-gradient(ellipse 90% 55% at 50% 30%, rgba(124, 195, 245, 0.28), transparent 70%),
+    linear-gradient(rgba(124, 195, 245, 0.08) 1px, transparent 1px) 0 0 / 32px 32px,
+    linear-gradient(90deg, rgba(124, 195, 245, 0.08) 1px, transparent 1px) 0 0 / 32px 32px,
+    linear-gradient(180deg, var(--page) 0%, var(--page-deep) 100%);
+}
+.welcome__card {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  margin: auto;
+  padding: 34px 18px 18px;
+  text-align: center;
+  background: var(--screen);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 32px 32px;
+  box-shadow:
+    0 0 0 6px var(--bezel),
+    0 0 0 10px var(--ink),
+    12px 14px 0 10px rgba(10, 15, 31, 0.45);
+  animation: welcome-in 380ms cubic-bezier(0.2, 0.8, 0.2, 1.1) both;
+}
+@keyframes welcome-in {
+  from { opacity: 0; transform: translateY(18px) scale(0.97); }
+}
+.welcome__plate {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -60%);
+  white-space: nowrap;
+}
+.welcome__hero {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 112px;
+  margin-top: 6px;
+}
+.welcome__halo {
+  position: absolute;
+  width: 130px;
+  height: 130px;
+  background: radial-gradient(circle, rgba(95, 185, 106, 0.45), transparent 65%);
+  animation: welcome-glow 2.4s ease-in-out infinite alternate;
+}
+@keyframes welcome-glow {
+  to { transform: scale(1.15); opacity: 0.6; }
+}
+.welcome__mascot {
+  position: relative;
+  animation: welcome-bob 1.6s ease-in-out infinite alternate;
+}
+@keyframes welcome-bob {
+  to { transform: translateY(-6px); }
+}
+.welcome__kicker {
+  margin: 8px 0 10px;
+  font-family: var(--font-title);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  color: var(--green-light);
+}
+.welcome__title {
+  margin: 0 0 10px;
+  font-size: 15px;
+  line-height: 1.6;
+  text-shadow: 2px 2px 0 var(--ink);
+}
+.welcome__title span { color: var(--yellow); }
+.welcome__lead {
+  margin: 0 auto 20px;
+  max-width: 320px;
+  font-size: 20px;
+  color: var(--muted);
+}
+.welcome__choices {
+  display: grid;
+  gap: 14px;
+}
+.choice {
+  display: grid;
+  grid-template-columns: 46px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px 12px 12px;
+  border: 0;
+  text-align: left;
+  text-decoration: none;
+  color: var(--ink);
+  cursor: pointer;
+  box-shadow: 0 var(--px) 0 var(--orange-dark), 0 0 0 3px var(--ink);
+  transition: transform 80ms, box-shadow 80ms, filter 120ms;
+}
+.choice:hover { filter: brightness(1.06); }
+.choice:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--orange-dark), 0 0 0 3px var(--ink);
+}
+.choice--green {
+  background: var(--green);
+  box-shadow: 0 var(--px) 0 #2f7a3c, 0 0 0 3px var(--ink);
+}
+.choice--green:active { box-shadow: 0 1px 0 #2f7a3c, 0 0 0 3px var(--ink); }
+.choice--cream { background: var(--cream); }
+.choice__icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  background: var(--ink);
+  color: var(--cream);
+}
+.choice--green .choice__icon { color: var(--green-light); }
+.choice__text {
+  display: grid;
+  gap: 5px;
+}
+.choice__text b {
+  font-family: var(--font-title);
+  font-size: 11px;
+  font-weight: normal;
+  line-height: 1.3;
+}
+.choice__text small {
+  font-size: 18px;
+  line-height: 1;
+  opacity: 0.8;
+}
+.choice__arrow {
+  font-size: 14px;
+  animation: welcome-nudge 0.9s steps(2) infinite;
+}
+@keyframes welcome-nudge {
+  to { transform: translateX(3px); }
+}
+.welcome__skip {
+  margin-top: 18px;
+  padding: 8px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 19px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+.welcome__skip:hover { color: var(--cream); }
+@media (prefers-reduced-motion: reduce) {
+  .welcome__card,
+  .welcome__halo,
+  .welcome__mascot,
+  .choice__arrow { animation: none; }
+}
+
 /* ---------- Login Microsoft ---------- */
 .btn--ms {
   display: flex;

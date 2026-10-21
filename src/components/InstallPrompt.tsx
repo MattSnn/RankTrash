@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { detectPlatform, dismissInstallGate, isIosSafari, openInstallGate, openWelcomeGate, promptInstall, usePwaInstall } from '../lib/pwa'
 import { landingUrl } from '../lib/site'
 import { play } from '../lib/sfx'
-import { Mascot } from './Mascot'
+import { Mascot, MascotEyes } from './Mascot'
 import { Icon, type IconName } from './PixelArt'
 
 function Step({ n, icon, children }: { n: number; icon: IconName; children: ReactNode }) {
@@ -107,21 +107,52 @@ export function InstallGate() {
 
   if (stage === 'welcome') {
     return (
-      <div className="install-gate" role="dialog" aria-modal="true" aria-labelledby="install-title">
-        <div className="install-card">
-          <Mascot size={84} mood="happy" />
-          <h1 id="install-title">RANKTRASH</h1>
-          <p>
-            Fotografe o lixo, descarte certo e <b>ganhe pontos</b> no ranking da campanha Lixo Zero da Facens.
-          </p>
-          <button className="btn btn--green btn--block install-cta" onClick={() => void install()}>
-            <Icon name="addBox" size={16} /> INSTALAR APP E TESTAR
-          </button>
-          <a className="btn btn--orange btn--block install-cta" href={landingUrl()} onClick={() => play('click')}>
-            <Icon name="star" size={16} /> CONHECER MAIS SOBRE
-          </a>
-          <button className="btn btn--ghost btn--block" style={{ marginTop: 16 }} onClick={dismissInstallGate}>
-            CONTINUAR NO NAVEGADOR
+      <div className="install-gate welcome" role="dialog" aria-modal="true" aria-labelledby="install-title">
+        <div className="welcome__card">
+          <div className="plate welcome__plate">
+            RANK <MascotEyes size={30} /> TRASH
+          </div>
+          <div className="welcome__hero">
+            <span className="welcome__halo" aria-hidden />
+            <Mascot size={96} mood="happy" className="welcome__mascot" />
+          </div>
+          <p className="welcome__kicker">CAMPANHA LIXO ZERO · FACENS</p>
+          <h1 id="install-title" className="welcome__title">
+            DESCARTE CERTO,
+            <br />
+            <span>GANHE PONTOS</span>
+          </h1>
+          <p className="welcome__lead">Fotografe o lixo na lixeira, a IA confere e você sobe no ranking do mês.</p>
+
+          <div className="welcome__choices">
+            <button className="choice choice--green" onClick={() => void install()}>
+              <span className="choice__icon">
+                <Icon name="addBox" size={22} />
+              </span>
+              <span className="choice__text">
+                <b>INSTALAR E JOGAR</b>
+                <small>Tela cheia, como um app</small>
+              </span>
+              <span className="choice__arrow" aria-hidden>
+                ▶
+              </span>
+            </button>
+            <a className="choice choice--cream" href={landingUrl()} onClick={() => play('click')}>
+              <span className="choice__icon">
+                <Icon name="star" size={22} />
+              </span>
+              <span className="choice__text">
+                <b>CONHECER O PROJETO</b>
+                <small>Como funciona, pontos e regras</small>
+              </span>
+              <span className="choice__arrow" aria-hidden>
+                ▶
+              </span>
+            </a>
+          </div>
+
+          <button className="welcome__skip" onClick={dismissInstallGate}>
+            Continuar no navegador
           </button>
         </div>
       </div>
